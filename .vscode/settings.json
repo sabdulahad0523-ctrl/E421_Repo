@@ -1,0 +1,7 @@
+{
+  // Live Server / "Go Live" settings for this workspace.
+  // host 0.0.0.0 lets other computers on the same network open the page at
+  // http://<your-lan-ip>:5500 — see README for details.
+  "liveServer.settings.host": "0.0.0.0",
+  "liveServer.settings.port": 5500
+}
