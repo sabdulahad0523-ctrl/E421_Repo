@@ -95,6 +95,9 @@ h2 .hint{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;c
 .bubble{background:#fff;border-radius:4px 18px 18px 18px;padding:12px 14px;margin-bottom:8px;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.06);position:relative}
 .bubble .pn{position:absolute;left:-8px;top:-8px;width:20px;height:20px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
 .cnt{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;margin-top:6px}
+.native-preview{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+.native-preview-label{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.native-bubble{border:1px dashed var(--p);color:var(--muted);font-style:italic}
 .chip{background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-weight:600;color:var(--muted)}
 .annc{background:var(--pl);border-radius:14px;padding:16px 18px;margin-top:18px;color:var(--h1)}
 .annc b{display:block;margin-bottom:6px;color:var(--p)}

@@ -17,7 +17,7 @@
     <p class="page-eyebrow" id="pageEyebrow">Flight Status</p>
     <h1 class="page-title" id="pageTitle">Hong Kong (HKG) To Ningbo (NGB)</h1>
     <div class="flight-selector">
-      <label for="flightNumberInput">Flight number</label>
+      <label for="flightNumberInput" id="flightNumberLabel">Flight number</label>
       <input id="flightNumberInput" type="text" maxlength="10" autocomplete="off" placeholder="e.g. UO612" />
     </div>
     <p class="page-meta">
@@ -57,24 +57,24 @@
     <div class="lang-menu" id="langMenu" role="menu" aria-labelledby="fabBtn">
       <div class="lang-menu-head">
         <p class="lang-menu-title" id="langMenuTitle">Translate flight info</p>
-        <p class="lang-menu-sub">Powered by Google Cloud Translation</p>
+        <p class="lang-menu-sub" id="langMenuSubtitle">Powered by Google Cloud Translation</p>
       </div>
       <button class="lang-option" type="button" role="menuitemradio" data-lang="en" aria-checked="true">
-        <span>English <small>EN</small></span>
+        <span><span id="langNameEnglish">English</span> <small>EN</small></span>
         <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
       </button>
       <button class="lang-option" type="button" role="menuitemradio" data-lang="zh-TW" aria-checked="false">
-        <span>繁體中文 <small>Traditional Chinese</small></span>
+        <span>繁體中文 <small id="langNameChinese">Traditional Chinese</small></span>
         <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
       </button>
       <button class="lang-option" type="button" role="menuitemradio" data-lang="ja" aria-checked="false">
-        <span>日本語 <small>Japanese</small></span>
+        <span>日本語 <small id="langNameJapanese">Japanese</small></span>
         <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
       </button>
     </div>
 
     <button class="fab-btn" id="fabBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="langMenu" title="Translate">
-      <span class="sr-only">Translate flight information</span>
+      <span class="sr-only" id="translateButtonLabel">Translate flight information</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9"/>
         <path d="M3 12h18"/>
@@ -113,6 +113,7 @@
          cancelled/diverted  -> red
        ========================================================= */
     const THRESHOLDS = { ON_TIME: 15, LONG_DELAY: 60 };
+    const GOOGLE_TRANSLATION_ENDPOINT = '';
 
     /* =========================================================
        MOCK DATA (single flight)
@@ -151,13 +152,21 @@
       en: {
         locale: 'en-GB',
         langName: 'English',
+        documentTitle: 'Flight Status | HK Express',
         eyebrow: 'Flight Status',
         routeTitle: '{from} ({fromCode}) To {to} ({toCode})',
+        flightNumberLabel: 'Flight number',
+        flightNumberPlaceholder: 'e.g. UO612',
         lastUpdated: 'Last updated {time}',
         refresh: 'Refresh Status',
         refreshing: 'Refreshing…',
         refreshed: 'Flight status refreshed',
         menuTitle: 'Translate flight info',
+        menuSubtitle: 'Powered by Google Cloud Translation',
+        translateButtonLabel: 'Translate flight information',
+        languageEnglish: 'English',
+        languageTraditionalChinese: 'Traditional Chinese',
+        languageJapanese: 'Japanese',
         translating: 'Translating with Google Cloud AI…',
         translatedTo: 'Translated to {lang}',
         translatedChip: 'Translated by Google Cloud AI',
@@ -231,13 +240,21 @@
       'zh-TW': {
         locale: 'zh-TW',
         langName: '繁體中文',
+        documentTitle: '航班狀態 | HK Express',
         eyebrow: '航班狀態',
         routeTitle: '{from} ({fromCode}) 至 {to} ({toCode})',
+        flightNumberLabel: '航班編號',
+        flightNumberPlaceholder: '例如 UO612',
         lastUpdated: '最後更新 {time}',
         refresh: '更新狀態',
         refreshing: '更新中…',
         refreshed: '航班狀態已更新',
         menuTitle: '翻譯航班資訊',
+        menuSubtitle: '由 Google Cloud Translation 提供支援',
+        translateButtonLabel: '翻譯航班資訊',
+        languageEnglish: '英文',
+        languageTraditionalChinese: '繁體中文',
+        languageJapanese: '日文',
         translating: '正在使用 Google Cloud AI 翻譯…',
         translatedTo: '已翻譯為{lang}',
         translatedChip: '由 Google Cloud AI 翻譯',
@@ -311,13 +328,21 @@
       ja: {
         locale: 'ja-JP',
         langName: '日本語',
+        documentTitle: 'フライト状況 | HK Express',
         eyebrow: '運航状況',
         routeTitle: '{from} ({fromCode}) 発 {to} ({toCode}) 行き',
+        flightNumberLabel: '便名',
+        flightNumberPlaceholder: '例：UO612',
         lastUpdated: '最終更新 {time}',
         refresh: '状況を更新',
         refreshing: '更新中…',
         refreshed: '運航状況を更新しました',
         menuTitle: 'フライト情報を翻訳',
+        menuSubtitle: 'Google Cloud Translation を使用',
+        translateButtonLabel: 'フライト情報を翻訳',
+        languageEnglish: '英語',
+        languageTraditionalChinese: '繁体字中国語',
+        languageJapanese: '日本語',
         translating: 'Google Cloud AI で翻訳中…',
         translatedTo: '{lang}に翻訳しました',
         translatedChip: 'Google Cloud AI による翻訳',
@@ -400,6 +425,8 @@
       flightNumber: initialFlightNumber,
       pendingFlightNumber: initialFlightNumber,
       publishedUpdate: null,
+      apiTranslations: {},
+      apiControllerMessages: {},
       lastUpdated: new Date(),
       isBusy: false,
       compact: false
@@ -414,6 +441,7 @@
       reasonCard: document.getElementById('reasonCard'),
       detailsTitle: document.getElementById('detailsTitle'),
       container: document.getElementById('flightsContainer'),
+      flightNumberLabel: document.getElementById('flightNumberLabel'),
       flightNumberInput: document.getElementById('flightNumberInput'),
       pageTitle: document.getElementById('pageTitle'),
       pageEyebrow: document.getElementById('pageEyebrow'),
@@ -426,6 +454,11 @@
       fabBtn: document.getElementById('fabBtn'),
       langMenu: document.getElementById('langMenu'),
       langMenuTitle: document.getElementById('langMenuTitle'),
+      langMenuSubtitle: document.getElementById('langMenuSubtitle'),
+      langNameEnglish: document.getElementById('langNameEnglish'),
+      langNameChinese: document.getElementById('langNameChinese'),
+      langNameJapanese: document.getElementById('langNameJapanese'),
+      translateButtonLabel: document.getElementById('translateButtonLabel'),
       langOptions: document.querySelectorAll('.lang-option'),
       toast: document.getElementById('toast'),
       compensationDialog: document.getElementById('compensationDialog'),
@@ -470,6 +503,8 @@
        ========================================================= */
     function t(key) {
       const dict = TRANSLATIONS[state.language] || TRANSLATIONS.en;
+      const apiDict = state.apiTranslations[state.language];
+      if (apiDict && apiDict[key] !== undefined) return apiDict[key];
       return dict[key] !== undefined ? dict[key] : (TRANSLATIONS.en[key] !== undefined ? TRANSLATIONS.en[key] : key);
     }
 
@@ -615,9 +650,10 @@
             : isLongDelay ? 'long' : 'short';
         const languageKey = state.language === 'zh-TW' ? 'zh' : state.language;
         const passengerMessage = update.passengerMessage;
-        const controllerMessage = typeof passengerMessage === 'string'
+        const publishedMessage = typeof passengerMessage === 'string'
           ? passengerMessage
           : passengerMessage && (passengerMessage[languageKey] || passengerMessage.en);
+        const controllerMessage = state.apiControllerMessages[state.language] || publishedMessage;
         const date = update.newDepartureDate || update.date || base.departure.date;
         return {
           id: 'published',
@@ -686,7 +722,7 @@
         return;
       }
 
-      if (lastCompensationReason === promptKey) return;
+      const shouldOpen = lastCompensationReason !== promptKey;
       lastCompensationReason = promptKey;
       els.compensationTitle.textContent = t('compTitle');
       els.compensationIntro.textContent = t('compIntro');
@@ -699,7 +735,7 @@
           '<span>' + escapeHtml(t(key)) + '</span>' +
         '</label>';
       }).join('');
-      if (!els.compensationDialog.open) els.compensationDialog.showModal();
+      if (shouldOpen && !els.compensationDialog.open) els.compensationDialog.showModal();
     }
 
     function field(label, valueHtml, extraClass) {
@@ -844,13 +880,21 @@
     function renderFlights(language) {
       if (language && TRANSLATIONS[language]) state.language = language;
       document.documentElement.lang = state.language;
+      document.title = t('documentTitle');
 
       const f = getCurrentFlight();
 
       els.pageEyebrow.textContent = t('eyebrow');
+      els.flightNumberLabel.textContent = t('flightNumberLabel');
+      els.flightNumberInput.placeholder = t('flightNumberPlaceholder');
       els.lastUpdated.textContent = fill(t('lastUpdated'), { time: formatClock(state.lastUpdated) });
       els.refreshLabel.textContent = state.isBusy ? t('refreshing') : t('refresh');
       els.langMenuTitle.textContent = t('menuTitle');
+      els.langMenuSubtitle.textContent = t('menuSubtitle');
+      els.langNameEnglish.textContent = t('languageEnglish');
+      els.langNameChinese.textContent = t('languageTraditionalChinese');
+      els.langNameJapanese.textContent = t('languageJapanese');
+      els.translateButtonLabel.textContent = t('translateButtonLabel');
       els.detailsTitle.textContent = t('flightDetails');
       els.translatedChip.classList.toggle('is-visible', state.language !== 'en');
       els.translatedChipText.textContent = t('translatedChip');
@@ -917,13 +961,50 @@
       });
     }
 
-    // TODO: Replace with Google Cloud Translation API (v3) call, e.g.
-    // POST https://translation.googleapis.com/v3/projects/{project}/locations/global:translateText
-    // body: { contents: [...cardStrings], targetLanguageCode: lang, mimeType: "text/plain" }
-    // Route through a backend proxy so credentials are never exposed client-side.
     function mockTranslateApi(lang) {
       return new Promise(function (resolve) {
         setTimeout(function () { resolve(TRANSLATIONS[lang] || TRANSLATIONS.en); }, 450);
+      });
+    }
+
+    function translateUi(lang) {
+      if (!GOOGLE_TRANSLATION_ENDPOINT) return mockTranslateApi(lang);
+
+      const entries = Object.entries(TRANSLATIONS.en).filter(function (entry) {
+        return entry[0] !== 'locale' && entry[0] !== 'langName' && typeof entry[1] === 'string';
+      });
+      const passengerMessage = state.publishedUpdate && state.publishedUpdate.passengerMessage;
+      const controllerMessage = typeof passengerMessage === 'string'
+        ? passengerMessage
+        : passengerMessage && passengerMessage.en;
+      const contents = entries.map(function (entry) { return entry[1]; });
+      if (controllerMessage) contents.push(controllerMessage);
+
+      return fetch(GOOGLE_TRANSLATION_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: contents,
+          targetLanguageCode: lang,
+          mimeType: 'text/plain'
+        })
+      }).then(function (response) {
+        if (!response.ok) throw new Error('Translation service returned HTTP ' + response.status + '.');
+        return response.json();
+      }).then(function (data) {
+        if (!data || !Array.isArray(data.translations) ||
+            data.translations.length !== contents.length ||
+            data.translations.some(function (item) { return !item || typeof item.translatedText !== 'string'; })) {
+          throw new Error('Translation service returned an invalid response.');
+        }
+
+        const translated = Object.assign({}, TRANSLATIONS[lang] || TRANSLATIONS.en);
+        entries.forEach(function (entry, index) {
+          translated[entry[0]] = data.translations[index].translatedText;
+        });
+        state.apiTranslations[lang] = translated;
+        if (controllerMessage) state.apiControllerMessages[lang] = data.translations[entries.length].translatedText;
+        return translated;
       });
     }
 
@@ -946,6 +1027,7 @@
 
       fetchFlightStatus().then(function () {
         state.publishedUpdate = readControllerUpdate(state.pendingFlightNumber);
+        state.apiControllerMessages = {};
         state.flightNumber = state.publishedUpdate
           ? state.publishedUpdate.flightNumber
           : state.pendingFlightNumber;
@@ -969,11 +1051,15 @@
       els.fabBtn.classList.add('is-busy');
       showToast(TRANSLATIONS[lang].translating);
 
-      mockTranslateApi(lang).then(function (dict) {
+      translateUi(lang).then(function (dict) {
+        state.language = lang;
+        showToast(fill(dict.translatedTo, { lang: dict.langName }));
+      }).catch(function (error) {
+        showToast('Translation failed: ' + error.message);
+      }).finally(function () {
         setLoading(false);
         els.fabBtn.classList.remove('is-busy');
-        renderFlights(lang);
-        showToast(fill(dict.translatedTo, { lang: dict.langName }));
+        renderFlights(state.language);
       });
     }
 

@@ -27,6 +27,14 @@ saved disruption update.
 Controller updates appear on the passenger page only after the passenger presses
 **Refresh Status**. Delayed flights also show a delay-amount meter in the disruption reason card.
 
+The controller preview includes a placeholder for a passenger's native-language message;
+it does not read phone numbers or passports. To enable live passenger-page translation,
+set `GOOGLE_TRANSLATION_ENDPOINT` in `UI Passenger/index.html` to an HTTPS backend proxy.
+The proxy receives `{ contents, targetLanguageCode, mimeType }` and should return
+Google Cloud Translation v3's `{ translations: [{ translatedText }] }` response shape.
+Keep Google credentials on the proxy, not in this static site. With no endpoint configured,
+the existing sample translations remain available.
+
 ## Run it locally with Live Server (VS Code)
 
 1. Install the **Live Server** extension (`ritwickdey.LiveServer`).
