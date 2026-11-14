@@ -20,8 +20,13 @@ flight-number inputs remain independent. Changes do not synchronize to other peo
 Opening or reloading the controller starts a fresh demo: all saved flight updates are cleared,
 so flights return to On Time. Existing passenger tabs keep their displayed status until
 **Refresh Status** is pressed; their selected flight numbers are not cleared.
-The passenger page starts with an On Time mock flight. On refresh, if there is no matching
-published update, it also falls back to On Time mock flight details.
+Both pages use the shared demo schedules in [`flight-data.js`](flight-data.js).
+The passenger page starts On Time using its selected flight's default route, departure time
+and date (based on the Hong Kong date). Refreshing without a matching published update uses
+the same defaults. UO 870, UO 702 and UO 116 have presets; other flight numbers, including
+UO 612, use the shared HKG → NRT, 14:55 departure default, not the previously selected flight.
+These are demo schedules, not live airline data. Arrival times are shown as `—` because
+the controller does not provide an arrival schedule.
 On Time is green, short delays (up to 60 minutes) are yellow, and longer delays,
 cancellations, and diversions are red. Delays with an unconfirmed duration are also red.
 These demo colours do not change compensation eligibility.
@@ -60,6 +65,7 @@ Any save in VS Code auto-reloads the pages.
 - [`UI Passenger/styles.css`](UI%20Passenger/styles.css) – passenger page styles
 - [`UI Controller/index.html`](UI%20Controller/index.html) – IOC delay update console
 - [`UI Controller/styles.css`](UI%20Controller/styles.css) – IOC console styles
+- [`flight-data.js`](flight-data.js) – shared demo routes, schedules and date/time helpers
 
 GitHub Pages can publish these ordinary HTML/CSS files without `.nojekyll`. That marker is
 mainly needed when bypassing Jekyll for files or folders whose names begin with `_`.

@@ -15,7 +15,7 @@
        ========================================================= -->
   <main class="page">
     <p class="page-eyebrow" id="pageEyebrow">Flight Status</p>
-    <h1 class="page-title" id="pageTitle">Hong Kong (HKG) To Ningbo (NGB)</h1>
+    <h1 class="page-title" id="pageTitle">Flight Status</h1>
     <div class="flight-selector">
       <label for="flightNumberInput" id="flightNumberLabel">Flight number</label>
       <input id="flightNumberInput" type="text" maxlength="10" autocomplete="off" placeholder="e.g. UO612" />
@@ -94,6 +94,7 @@
     </form>
   </dialog>
 
+  <script src="../flight-data.js"></script>
   <script>
   (function () {
     'use strict';
@@ -106,31 +107,13 @@
        ========================================================= */
     const THRESHOLDS = { ON_TIME: 15, LONG_DELAY: 60 };
 
-    /* =========================================================
-       MOCK DATA (single flight)
-       TODO: Replace with a real call to the HK Express / Cathay
-       flight status API, e.g. GET /api/flight-status?flight=UO612&date=...
-       ========================================================= */
-    const MOCK_DATA = [
-      {
-        id: 'f1',
-        flightNo: 'UO612',
-        origin: { code: 'HKG', cityKey: 'cityHKG' },
-        destination: { code: 'NGB', cityKey: 'cityNGB' },
-        departure: { date: '2026-11-14', scheduled: '13:25', time: '13:25', timeType: 'estimated' },
-        arrival:   { date: '2026-11-14', scheduled: '16:45', time: '16:45', timeType: 'estimated' },
-        status: 'scheduled',
-        reasonKey: 'ontime'
-      }
-    ];
-
-    /* Prototype-only overrides so the three colour states can be demoed. */
+    /* Scenario delays are relative to the selected flight's shared demo schedule. */
     const SCENARIOS = {
-      ontime:    { dot: 'green',  status: 'scheduled', dep: { time: '13:25', timeType: 'estimated' }, arr: { time: '16:45', timeType: 'estimated' }, reasonKey: 'ontime' },
-      short:     { dot: 'yellow', status: 'delayed',   dep: { time: '13:50', timeType: 'estimated' }, arr: { time: '17:08', timeType: 'estimated' }, reasonKey: 'short' },
-      long:      { dot: 'red',    status: 'delayed',   dep: { time: '15:10', timeType: 'estimated' }, arr: { time: '18:25', timeType: 'estimated' }, reasonKey: 'long' },
-      cancelled: { dot: 'red',    status: 'cancelled', dep: { time: null,    timeType: 'estimated' }, arr: { time: null,    timeType: 'estimated' }, reasonKey: 'cancelled' },
-      diverted:  { dot: 'red',    status: 'diverted',  dep: { time: '13:36', timeType: 'actual' },    arr: { time: '16:42', timeType: 'actual' },    reasonKey: 'diverted' }
+      ontime:    { status: 'scheduled', delay: 0 },
+      short:     { status: 'delayed', delay: 25 },
+      long:      { status: 'delayed', delay: 105 },
+      cancelled: { status: 'cancelled', delay: null },
+      diverted:  { status: 'diverted', delay: 11 }
     };
     /* =========================================================
        PRESET TRANSLATIONS
@@ -399,7 +382,7 @@
     /* =========================================================
        STATE
        ========================================================= */
-    const initialFlightNumber = localStorage.getItem('passengerFlightNumber') || MOCK_DATA[0].flightNo;
+    const initialFlightNumber = localStorage.getItem('passengerFlightNumber') || FLIGHT_DEMO.defaultFlightNumber;
     const state = {
       language: 'en',
       scenario: new URLSearchParams(window.location.search).get('scenario') || 'ontime',
@@ -490,12 +473,12 @@
     }
 
     function cityLabel(place) {
-      return place.cityKey ? t(place.cityKey) : (place.name || place.code);
+      if (place.cityKey) return t(place.cityKey);
+      const route = FLIGHT_DEMO.routes[place.code];
+      return route ? route[{ en: 0, 'zh-TW': 2, ja: 3 }[state.language]] : (place.name || place.code);
     }
 
-    function normalizeFlightNumber(value) {
-      return String(value || '').replace(/\s+/g, '').toUpperCase();
-    }
+    const normalizeFlightNumber = FLIGHT_DEMO.normalizeFlightNumber;
 
     function readControllerUpdate(flightNumber) {
       const target = normalizeFlightNumber(flightNumber);
@@ -608,8 +591,18 @@
     }
 
     function getCurrentFlight() {
-      const base = MOCK_DATA[0];
-      if (!base) return null;
+      const defaults = FLIGHT_DEMO.getDefaults(state.flightNumber);
+      const scheduled = FLIGHT_DEMO.formatTime(defaults.std);
+      const base = {
+        id: 'f1',
+        flightNo: state.flightNumber,
+        origin: { code: 'HKG', cityKey: 'cityHKG' },
+        destination: { code: defaults.to },
+        departure: { date: defaults.date, scheduled: scheduled, time: scheduled, timeType: 'estimated' },
+        arrival: { date: defaults.date, scheduled: '—', time: null, timeType: 'estimated' },
+        status: 'scheduled',
+        reasonKey: 'ontime'
+      };
       const update = state.publishedUpdate;
       if (update) {
         const delay = Number.isFinite(update.delayMinutes) ? update.delayMinutes : null;
@@ -647,12 +640,16 @@
       }
       const s = SCENARIOS[state.scenario];
       if (!s) return base;
+      const departureMinutes = s.delay === null ? null : defaults.std + s.delay;
       return Object.assign({}, base, {
-        flightNo: state.flightNumber,
         status: s.status,
-        reasonKey: s.reasonKey,
-        departure: Object.assign({}, base.departure, s.dep),
-        arrival: Object.assign({}, base.arrival, s.arr)
+        reasonKey: state.scenario,
+        delayMinutes: s.delay,
+        departure: Object.assign({}, base.departure, {
+          date: departureMinutes === null ? defaults.date : FLIGHT_DEMO.addDays(defaults.date, Math.floor(departureMinutes / 1440)),
+          time: departureMinutes === null ? null : FLIGHT_DEMO.formatTime(departureMinutes),
+          timeType: s.status === 'diverted' ? 'actual' : 'estimated'
+        })
       });
     }
 
@@ -922,7 +919,7 @@
     // TODO: Replace with real flight status API call (HK Express / Cathay ops data).
     function fetchFlightStatus() {
       return new Promise(function (resolve) {
-        setTimeout(function () { resolve(MOCK_DATA); }, 1000);
+        setTimeout(resolve, 1000);
       });
     }
 
@@ -937,7 +934,7 @@
 
     function handleRefresh() {
       if (state.isBusy) return;
-      state.pendingFlightNumber = els.flightNumberInput.value.trim().toUpperCase() || MOCK_DATA[0].flightNo;
+      state.pendingFlightNumber = els.flightNumberInput.value.trim().toUpperCase() || FLIGHT_DEMO.defaultFlightNumber;
       setLoading(true);
       els.refreshBtn.disabled = true;
       els.refreshBtn.classList.add('is-loading');
@@ -1012,10 +1009,10 @@
     });
 
     els.flightNumberInput.addEventListener('input', function () {
-      state.pendingFlightNumber = els.flightNumberInput.value.trim().toUpperCase() || MOCK_DATA[0].flightNo;
+      state.pendingFlightNumber = els.flightNumberInput.value.trim().toUpperCase() || FLIGHT_DEMO.defaultFlightNumber;
     });
     els.flightNumberInput.addEventListener('blur', function () {
-      state.pendingFlightNumber = els.flightNumberInput.value.trim().toUpperCase() || MOCK_DATA[0].flightNo;
+      state.pendingFlightNumber = els.flightNumberInput.value.trim().toUpperCase() || FLIGHT_DEMO.defaultFlightNumber;
       els.flightNumberInput.value = state.pendingFlightNumber;
     });
 

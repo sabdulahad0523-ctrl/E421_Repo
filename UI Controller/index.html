@@ -92,6 +92,7 @@
 </div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="../flight-data.js"></script>
 <script>
 /* ============ CONFIG ============ */
 const PUBLISH_ENDPOINT = '';            // optional: URL the teammate's page/server accepts POST JSON on
@@ -99,10 +100,8 @@ const CHANNEL = 'hkexpress-flight-updates'; // BroadcastChannel + postMessage ty
 const LS_PREFIX = 'hkexpress:flight:';  // localStorage key = prefix + "UO 870|2026-11-15"
 
 /* ============ DATA ============ */
-const ROUTES={NRT:['Tokyo Narita','Tokyo','東京','東京','도쿄'],KIX:['Osaka Kansai','Osaka','大阪','大阪','오사카'],TPE:['Taipei','Taipei','台北','台北','타이베이'],
- ICN:['Seoul Incheon','Seoul','首爾','ソウル','서울'],CTS:['Sapporo','Sapporo','札幌','札幌','삿포로'],FUK:['Fukuoka','Fukuoka','福岡','福岡','후쿠오카'],BKK:['Bangkok','Bangkok','曼谷','バンコク','방콕']};
+const ROUTES=FLIGHT_DEMO.routes;
 const GATES=['19','21','23','26','28','31','34'],PAX=[150,176,188,220];
-const PRESETS={'UO 870':{to:'NRT',day:0,std:14*60+55,gate:'23',pax:188},'UO 702':{to:'TPE',day:0,std:20*60+40,gate:'31',pax:176},'UO 116':{to:'CTS',day:1,std:8*60+30,gate:'19',pax:220}};
 const CATS=[['technical','Technical','fa-screwdriver-wrench'],['weather','Weather','fa-cloud-bolt'],['air_traffic','Air Traffic','fa-tower-broadcast'],['crew','Team arrangements','fa-user-group'],
  ['late_aircraft','Late Aircraft','fa-plane-arrival'],['ground_ops','Ground Ops','fa-truck-ramp-box'],['security_medical','Security / Medical','fa-shield-halved'],['airport','Airport','fa-building']];
 // [id, name, severity, delay(min|'TBC'|'CX'), confidence, nextUpdate, internal note, passenger wording]
@@ -189,12 +188,10 @@ const ENT_IC={asia_miles_500:'✈',meal_voucher_80:'🍽',free_change:'↻',rebo
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const todayISO=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Hong_Kong'}).format(new Date());
-function addDays(iso,n){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+const {todayISO,addDays,formatTime:hm}=FLIGHT_DEMO;
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function dLabel(iso,lang='en'){const d=new Date(iso+'T00:00:00Z'),m=d.getUTCMonth(),day=d.getUTCDate();
  if(lang==='zh'||lang==='ja')return `${m+1}月${day}日`;if(lang==='ko')return `${m+1}월 ${day}일`;return `${day} ${MON[m]}`}
-const hm=m=>pad(Math.floor(((m%1440)+1440)%1440/60))+':'+pad(((m%1440)+1440)%1440%60);
 function durLabel(n){if(n===0)return 'On time';const h=Math.floor(n/60),m=n%60;return '+'+(h?h+'h'+(m?' '+m+'m':''):m+' min')}
 // time with date if not on the flight date
 function timeOn(total,lang='en'){const off=Math.floor(total/1440),t=hm(total);if(!off)return t;const d=addDays(F.date,off);
@@ -205,7 +202,7 @@ function flightColour(status,minutes){
 }
 
 /* ============ STATE ============ */
-const F={no:'',valid:false,to:'NRT',day:0,std:14*60+55,gate:'23',pax:188,date:todayISO};
+const F={no:'',valid:false,...FLIGHT_DEMO.getDefaults('')};
 let sel={cat:null,reason:null};
 let det={},defs={},published={},log=[],pubDone=false;
 let demoBase=F.std-45,demoStart=Date.now();
@@ -434,7 +431,7 @@ $('reset').onclick=()=>{
   gate:F.gate,gateChanged:false,sentAt:`${F.date}T${hm(demoNow())}:00+08:00`};
  send(obj);
  delete published[key()];log=log.filter(l=>l.key!==key());sel={cat:null,reason:null};det={lang:det.lang||'en'};defs={};pubDone=false;
- const p=PRESETS[F.no];if(p){F.gate=p.gate}
+ F.gate=FLIGHT_DEMO.getDefaults(F.no).gate;
  resetDemoClock();window._payload=obj;
  toast(`${F.no} reset to ON TIME – press Refresh Status on the passenger page.`);
  render();$('json').textContent=JSON.stringify(obj,null,2);
@@ -451,7 +448,7 @@ $('fno').addEventListener('input',e=>{
  const changed=v!==F.no;F.no=v;F.valid=valid;
  el.classList.toggle('bad',!valid&&v.length>0);
  $('ferr').textContent=!valid&&v.length>=3?'Enter a valid HK Express flight number (e.g. UO 870)':'';
- if(valid&&changed){const p=PRESETS[v];if(p){Object.assign(F,{to:p.to,day:p.day,std:p.std,gate:p.gate,pax:p.pax});F.date=addDays(todayISO,p.day)}
+ if(valid&&changed){Object.assign(F,FLIGHT_DEMO.getDefaults(v));
   sel={cat:null,reason:null};det={lang:det.lang||'en'};defs={};pubDone=false;resetDemoClock()}
  render();
 });
