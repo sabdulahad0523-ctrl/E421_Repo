@@ -204,6 +204,18 @@ let demoBase=F.std-45,demoStart=Date.now();
 function demoNow(){return demoBase+Math.floor((Date.now()-demoStart)/60000)}
 function demoSecs(){return Math.floor((Date.now()-demoStart)/1000)%60}
 function key(){return F.no+'|'+F.date}
+function restorePublished(){
+ if(!F.valid||Object.prototype.hasOwnProperty.call(published,key()))return;
+ const raw=localStorage.getItem(LS_PREFIX+key());if(!raw)return;
+ let update;
+ try{update=JSON.parse(raw)}catch(e){toast('The saved flight update could not be read.');return}
+ if(!update||update.flightNumber!==F.no||update.date!==F.date||!['on_time','delayed','cancelled'].includes(update.status)||!['GREEN','YELLOW','RED'].includes(update.statusColour)){
+  toast('The saved flight update does not match this flight.');
+  return;
+ }
+ const reason=R[update.category]?.find(r=>r[0]===update.reasonId)?.[1]||update.reasonId||'Previous update';
+ published[key()]={status:update.status,colour:update.statusColour,display:update.status==='cancelled'?null:update.newDeparture||'TBC',reason,at:update.sentAt?.slice(11,16)||'—'};
+}
 function resetDemoClock(){demoBase=F.std-45;demoStart=Date.now()}
 function reasonObj(){if(!sel.cat||!sel.reason)return null;const r=R[sel.cat].find(x=>x[0]===sel.reason);
  return r&&{id:r[0],name:r[1],sev:r[2],delay:r[3],conf:r[4],next:r[5],note:r[6],pax:r[7]}}
@@ -294,6 +306,7 @@ function payload(c,m4){
 /* ============ RENDER ============ */
 let lastCol='',lastEnts='';
 function render(){
+ restorePublished();
  const fid=document.activeElement&&document.activeElement.id;
  const c=calc();
  // stepper
