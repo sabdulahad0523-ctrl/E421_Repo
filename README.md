@@ -17,8 +17,14 @@ Keep both pages open in tabs in the same browser. The controller publishes fligh
 to same-origin `localStorage`; on **Refresh Status**, the passenger page applies the newest
 published update only when its entered flight number matches. The controller and passenger
 flight-number inputs remain independent. Changes do not synchronize to other people's browsers.
+Opening or reloading the controller starts a fresh demo: all saved flight updates are cleared,
+so flights return to On Time. Existing passenger tabs keep their displayed status until
+**Refresh Status** is pressed; their selected flight numbers are not cleared.
 The passenger page starts with an On Time mock flight. On refresh, if there is no matching
 published update, it also falls back to On Time mock flight details.
+On Time is green, short delays (up to 60 minutes) are yellow, and longer delays,
+cancellations, and diversions are red. Delays with an unconfirmed duration are also red.
+These demo colours do not change compensation eligibility.
 For mock scenarios, the passenger page shows demo support-choice dialogs for short delays,
 long delays, and cancellations. For controller-published updates, it shows choices only
 when the update includes entitlements; a delay with no entitlements has no popup. The demo

@@ -100,11 +100,9 @@
 
     /* =========================================================
        CONFIG
-       Delay thresholds (minutes) that decide the hero colour:
-         <= ON_TIME          -> green  (on time)
-         <= LONG_DELAY       -> yellow (short delay)
-         >  LONG_DELAY       -> red    (long delay)
-         cancelled/diverted  -> red
+       Explicit delays up to 60 minutes are yellow; longer or
+       unconfirmed delays, cancellations and diversions are red.
+       ON_TIME is the tolerance for estimated times on scheduled flights.
        ========================================================= */
     const THRESHOLDS = { ON_TIME: 15, LONG_DELAY: 60 };
 
@@ -128,7 +126,7 @@
 
     /* Prototype-only overrides so the three colour states can be demoed. */
     const SCENARIOS = {
-      ontime:    { dot: 'green',  status: 'scheduled', dep: { time: '13:25', timeType: 'estimated' }, arr: { time: '16:40', timeType: 'estimated' }, reasonKey: 'ontime' },
+      ontime:    { dot: 'green',  status: 'scheduled', dep: { time: '13:25', timeType: 'estimated' }, arr: { time: '16:45', timeType: 'estimated' }, reasonKey: 'ontime' },
       short:     { dot: 'yellow', status: 'delayed',   dep: { time: '13:50', timeType: 'estimated' }, arr: { time: '17:08', timeType: 'estimated' }, reasonKey: 'short' },
       long:      { dot: 'red',    status: 'delayed',   dep: { time: '15:10', timeType: 'estimated' }, arr: { time: '18:25', timeType: 'estimated' }, reasonKey: 'long' },
       cancelled: { dot: 'red',    status: 'cancelled', dep: { time: null,    timeType: 'estimated' }, arr: { time: null,    timeType: 'estimated' }, reasonKey: 'cancelled' },
@@ -595,13 +593,10 @@
 
     /* green / yellow / red */
     function getSeverity(f) {
-      if (f.statusColour) {
-        return { GREEN: 'green', YELLOW: 'yellow', RED: 'red' }[f.statusColour] || 'red';
-      }
       if (f.status === 'cancelled' || f.status === 'diverted') return 'red';
       const d = maxDelay(f);
-      if (d > THRESHOLDS.LONG_DELAY) return 'red';
-      if (d > THRESHOLDS.ON_TIME) return 'yellow';
+      if (f.reasonKey === 'long' || d > THRESHOLDS.LONG_DELAY) return 'red';
+      if (f.status === 'delayed' || d > THRESHOLDS.ON_TIME) return 'yellow';
       return 'green';
     }
 
@@ -618,8 +613,7 @@
       const update = state.publishedUpdate;
       if (update) {
         const delay = Number.isFinite(update.delayMinutes) ? update.delayMinutes : null;
-        const isLongDelay = (delay !== null && delay > THRESHOLDS.LONG_DELAY) ||
-          (delay === null && update.statusColour === 'RED');
+        const isLongDelay = delay === null || delay > THRESHOLDS.LONG_DELAY;
         const reasonKey = update.status === 'cancelled'
           ? 'cancelled'
           : update.status === 'on_time'

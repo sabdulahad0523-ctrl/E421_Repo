@@ -47,7 +47,7 @@
  </section>
 
  <section class="card" aria-labelledby="s5">
-  <h2 id="s5"><i class="fa-solid fa-gauge-high"></i> 5 · Auto results <span class="hint">From HK Express policy · display only</span></h2>
+  <h2 id="s5"><i class="fa-solid fa-gauge-high"></i> 5 · Auto results <span class="hint">Demo rules · display only</span></h2>
   <div class="res" id="results"></div>
  </section>
 
@@ -199,6 +199,10 @@ function durLabel(n){if(n===0)return 'On time';const h=Math.floor(n/60),m=n%60;r
 // time with date if not on the flight date
 function timeOn(total,lang='en'){const off=Math.floor(total/1440),t=hm(total);if(!off)return t;const d=addDays(F.date,off);
  return lang==='en'?`${t}, ${dLabel(d)}`:`${dLabel(d,lang)} ${t}`}
+function flightColour(status,minutes){
+ if(status==='on_time')return 'GREEN';
+ return status==='delayed'&&Number.isFinite(minutes)&&minutes<=60?'YELLOW':'RED';
+}
 
 /* ============ STATE ============ */
 const F={no:'',valid:false,to:'NRT',day:0,std:14*60+55,gate:'23',pax:188,date:todayISO};
@@ -208,6 +212,14 @@ let demoBase=F.std-45,demoStart=Date.now();
 function demoNow(){return demoBase+Math.floor((Date.now()-demoStart)/60000)}
 function demoSecs(){return Math.floor((Date.now()-demoStart)/1000)%60}
 function key(){return F.no+'|'+F.date}
+function startDemo(){
+ try{
+  Object.keys(localStorage).filter(k=>k.startsWith(LS_PREFIX)).forEach(k=>localStorage.removeItem(k));
+ }catch(error){
+  console.error('Could not reset saved flight updates.',error);
+  toast('Could not reset saved flight updates. Allow browser storage and reload.');
+ }
+}
 function restorePublished(){
  if(!F.valid||Object.prototype.hasOwnProperty.call(published,key()))return;
  const raw=localStorage.getItem(LS_PREFIX+key());if(!raw)return;
@@ -218,7 +230,7 @@ function restorePublished(){
   return;
  }
  const reason=R[update.category]?.find(r=>r[0]===update.reasonId)?.[1]||update.reasonId||'Previous update';
- published[key()]={status:update.status,colour:update.statusColour,display:update.status==='cancelled'?null:update.newDeparture||'TBC',reason,at:update.sentAt?.slice(11,16)||'—'};
+ published[key()]={status:update.status,colour:flightColour(update.status,update.delayMinutes),display:update.status==='cancelled'?null:update.newDeparture||'TBC',reason,at:update.sentAt?.slice(11,16)||'—'};
 }
 function resetDemoClock(){demoBase=F.std-45;demoStart=Date.now()}
 function reasonObj(){if(!sel.cat||!sel.reason)return null;const r=R[sel.cat].find(x=>x[0]===sel.reason);
@@ -234,8 +246,9 @@ function calc(){
  const d=det.delay,cx=d==='CX',tbc=d==='TBC',ontime=d===0;
  let conf=cx?null:(tbc?'uncertain':det.conf); if(ontime)conf=null;
  const mins=(cx||tbc)?null:d;
- const colour=cx?'RED':tbc?'RED':mins<60?'GREEN':mins<180?'YELLOW':'RED';
- const label=cx?'Major disruption':tbc?'Major disruption':ontime?'On time':mins<60?'Delay under 1 hour':mins<180?'Delay over 1 hour':'Major disruption';
+ const status=cx?'cancelled':ontime?'on_time':'delayed';
+ const colour=flightColour(status,mins);
+ const label=cx||tbc?'Major disruption':ontime?'On time':mins<=60?'Short delay':'Long delay';
  let ents=[];
  if(cx){ents=['rebooking','refund','hotel','travel_voucher']}
  else if(mins!=null&&mins>=60){ents=['rebooking','meal_voucher_80','hotel','travel_voucher']}
@@ -244,7 +257,6 @@ function calc(){
  const newDeparture=showTime&&newTot!=null?hm(newTot):null;
  const newDate=newTot!=null?addDays(F.date,Math.floor(newTot/1440)):null;
  const nextAt=(cx||ontime)?null:det.next==='boarding'?'at_boarding':hm(demoNow()+Number(det.next));
- const status=cx?'cancelled':ontime?'on_time':'delayed';
  const gateChanged=det.gate!==F.gate;
  return{r,d,cx,tbc,ontime,conf,mins,colour,label,ents,showTime,newTot,newDeparture,newDate,nextAt,status,gateChanged};
 }
@@ -329,7 +341,7 @@ function render(){
  // banner
  const pub=published[key()];
  if(!F.valid)$('banner').innerHTML='';
- else if(!pub||pub.status==='on_time')$('banner').innerHTML=`<div class="banner G"><i class="fa-solid fa-circle-check fa-xl"></i><div><span class="bt">CURRENT STATUS · what passengers see now</span>GREEN · ON TIME · No updates sent</div><div class="bigtime">${hm(F.std)}</div></div>`;
+ else if(!pub||pub.status==='on_time')$('banner').innerHTML=`<div class="banner G"><i class="fa-solid fa-circle-check fa-xl"></i><div><span class="bt">CURRENT STATUS · latest demo state</span>GREEN · ON TIME${pub?'':' · No updates sent'}</div><div class="bigtime">${hm(F.std)}</div></div>`;
  else{const cl=pub.colour[0];$('banner').innerHTML=`<div class="banner ${cl}"><i class="fa-solid ${pub.status==='cancelled'?'fa-ban':'fa-clock'} fa-xl"></i><div><span class="bt">CURRENT STATUS · last published ${pub.at}</span>${pub.colour} · ${pub.status==='cancelled'?'CANCELLED':'DELAYED'} · ${esc(pub.reason)}</div><div class="bigtime">${pub.status==='cancelled'?'—':pub.display||'TBC'}</div></div>`}
  // types
  $('types').className='types'+(sel.cat?' has':'');
@@ -424,7 +436,7 @@ $('reset').onclick=()=>{
  delete published[key()];log=log.filter(l=>l.key!==key());sel={cat:null,reason:null};det={lang:det.lang||'en'};defs={};pubDone=false;
  const p=PRESETS[F.no];if(p){F.gate=p.gate}
  resetDemoClock();window._payload=obj;
- toast(`${F.no} reset to ON TIME – passenger page is back to the before state.`);
+ toast(`${F.no} reset to ON TIME – press Refresh Status on the passenger page.`);
  render();$('json').textContent=JSON.stringify(obj,null,2);
 };
 
@@ -468,7 +480,7 @@ document.addEventListener('click',e=>{
 });
 function tick(){const n=demoNow();$('clk').textContent=hm(n)+':'+pad(demoSecs());$('clkS').textContent=`Demo time · HKT · ${DOW[new Date(addDays(F.date,Math.floor(n/1440))+'T00:00:00Z').getUTCDay()]} ${dLabel(addDays(F.date,Math.floor(n/1440)))}`}
 setInterval(tick,1000);setInterval(()=>{if(document.activeElement.tagName!=='SELECT')render()},60000);
-tick();render();
+startDemo();tick();render();
 </script>
 
 
