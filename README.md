@@ -1,6 +1,8 @@
 # E421_Repo
 
-> ▶ **Live demo: <https://sabdulahad0523-ctrl.github.io/E421_Repo/>**
+> ▶ **Passenger UI:** [Open the live passenger page](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/)
+>
+> **IOC Controller:** [Open the live controller](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/)
 >
 > Opens in any browser on any computer or phone — no clone, no install, no `git pull` needed.
 > The site rebuilds automatically (~1 minute) after every push to `main`.
@@ -9,21 +11,18 @@ Flight Status prototype (HK Express hackathon UI).
 
 ## Passenger page and controller
 
-Open the passenger page at `https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/`
-and the controller at `https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/`.
-Keep both pages open in tabs in the same browser. Typing a flight number or choosing a
-scenario in the controller applies the controller's scenario to the passenger page only
-when both pages have the same flight number selected and the passenger presses **Refresh Status**.
-The two flight-number inputs remain independent. This uses browser `localStorage` and works for pages on the same site origin;
-it does not synchronize changes to another person's browser. Flight numbers currently
-update the display while the route and status data remain mocked for UO612.
+Open [the passenger page](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/)
+and [the IOC controller](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/).
+Keep both pages open in tabs in the same browser. The controller publishes flight updates
+to same-origin `localStorage`; on **Refresh Status**, the passenger page applies the newest
+published update only when its entered flight number matches. The controller and passenger
+flight-number inputs remain independent. Changes do not synchronize to other people's browsers.
+If there is no matching published update, the passenger page falls back to its mock flight details.
 The passenger page also shows demo support-choice dialogs for short delays, long delays,
 and cancellations. These options are illustrative only, not confirmed airline benefits;
 diverted flights do not show the choice dialog.
-Controller changes are staged until the passenger presses **Refresh Status**. Delayed
-flights also show a delay-amount meter in the disruption reason card.
-To show a specific scenario in a shareable URL, add `?scenario=ontime`, `?scenario=short`,
-`?scenario=long`, `?scenario=cancelled`, or `?scenario=diverted` to the passenger page URL.
+Controller updates appear on the passenger page only after the passenger presses
+**Refresh Status**. Delayed flights also show a delay-amount meter in the disruption reason card.
 
 ## Run it locally with Live Server (VS Code)
 
@@ -31,8 +30,11 @@ To show a specific scenario in a shareable URL, add `?scenario=ontime`, `?scenar
 2. Open this repo folder in VS Code.
 3. Click **Go Live** in the status bar (or right-click `index.html` → **Open with Live Server**).
 
-The browser opens `http://127.0.0.1:5500/`, which redirects to the prototype at
-`http://127.0.0.1:5500/UI%20Passenger/index.html`. Any save in VS Code auto-reloads the page.
+The browser opens `http://127.0.0.1:5500/`, which redirects to the passenger page at
+[`http://127.0.0.1:5500/UI%20Passenger/`](http://127.0.0.1:5500/UI%20Passenger/).
+Open the controller in a second tab at
+[`http://127.0.0.1:5500/UI%20Controller/`](http://127.0.0.1:5500/UI%20Controller/).
+Any save in VS Code auto-reloads the pages.
 
 ### View the local server from another computer (same Wi-Fi)
 
@@ -47,9 +49,10 @@ GitHub Pages link above whenever you need a link that works anywhere.
 ## Files
 
 - `index.html` – entry point used by Go Live / GitHub Pages (redirects to the UI)
-- `UI Passenger/index.html` – the flight status page
-- `UI Passenger/styles.css` – all styles for the page
-- `UI Controller/index.html` – separate demo controller for changing the passenger page scenario
+- [`UI Passenger/index.html`](UI%20Passenger/index.html) – the flight status page
+- [`UI Passenger/styles.css`](UI%20Passenger/styles.css) – passenger page styles
+- [`UI Controller/index.html`](UI%20Controller/index.html) – IOC delay update console
+- [`UI Controller/styles.css`](UI%20Controller/styles.css) – IOC console styles
 
 GitHub Pages can publish these ordinary HTML/CSS files without `.nojekyll`. That marker is
 mainly needed when bypassing Jekyll for files or folders whose names begin with `_`.

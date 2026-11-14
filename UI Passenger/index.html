@@ -375,6 +375,7 @@
       scenario: new URLSearchParams(window.location.search).get('scenario') || 'diverted',
       flightNumber: initialFlightNumber,
       pendingFlightNumber: initialFlightNumber,
+      publishedUpdate: null,
       lastUpdated: new Date(),
       isBusy: false,
       compact: false
@@ -454,6 +455,51 @@
       });
     }
 
+    function cityLabel(place) {
+      return place.cityKey ? t(place.cityKey) : (place.name || place.code);
+    }
+
+    function normalizeFlightNumber(value) {
+      return String(value || '').replace(/\s+/g, '').toUpperCase();
+    }
+
+    function readControllerUpdate(flightNumber) {
+      const target = normalizeFlightNumber(flightNumber);
+      const prefix = 'hkexpress:flight:';
+      let latest = null;
+      let malformed = false;
+
+      function parseUpdate(raw) {
+        try {
+          const value = JSON.parse(raw);
+          if (!value || normalizeFlightNumber(value.flightNumber) !== target ||
+              !value.route || !['on_time', 'delayed', 'cancelled'].includes(value.status) ||
+              !['GREEN', 'YELLOW', 'RED'].includes(value.statusColour)) return null;
+          return value;
+        } catch (error) {
+          malformed = true;
+          return null;
+        }
+      }
+
+      const latestRaw = localStorage.getItem(prefix + 'latest');
+      if (latestRaw) latest = parseUpdate(latestRaw);
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(prefix) || key === prefix + 'latest') continue;
+        const keyFlight = key.slice(prefix.length).split('|')[0];
+        if (normalizeFlightNumber(keyFlight) !== target) continue;
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const value = parseUpdate(raw);
+        if (value && (!latest || String(value.sentAt || '') > String(latest.sentAt || ''))) latest = value;
+      }
+
+      if (malformed) showToast('A published flight update could not be read.');
+      return latest;
+    }
+
     function escapeHtml(str) {
       return String(str)
         .replace(/&/g, '&amp;')
@@ -503,6 +549,7 @@
 
     /* Largest positive delay across departure and arrival. */
     function maxDelay(f) {
+      if (Number.isFinite(f.delayMinutes)) return Math.max(0, f.delayMinutes);
       return Math.max(
         0,
         diffMinutes(f.departure.scheduled, f.departure.time),
@@ -512,6 +559,9 @@
 
     /* green / yellow / red */
     function getSeverity(f) {
+      if (f.statusColour) {
+        return { GREEN: 'green', YELLOW: 'yellow', RED: 'red' }[f.statusColour] || 'red';
+      }
       if (f.status === 'cancelled' || f.status === 'diverted') return 'red';
       const d = maxDelay(f);
       if (d > THRESHOLDS.LONG_DELAY) return 'red';
@@ -522,12 +572,48 @@
     function getStatusKey(f) {
       if (f.status === 'cancelled') return 'statusCancelled';
       if (f.status === 'diverted') return 'statusDiverted';
+      if (f.status === 'delayed') return 'statusDelayed';
       return maxDelay(f) > THRESHOLDS.ON_TIME ? 'statusDelayed' : 'statusOnTime';
     }
 
     function getCurrentFlight() {
       const base = MOCK_DATA[0];
       if (!base) return null;
+      const update = state.publishedUpdate;
+      if (update) {
+        const delay = Number.isFinite(update.delayMinutes) ? update.delayMinutes : null;
+        const isLongDelay = (delay !== null && delay > THRESHOLDS.LONG_DELAY) ||
+          (delay === null && update.statusColour === 'RED');
+        const reasonKey = update.status === 'cancelled'
+          ? 'cancelled'
+          : update.status === 'on_time'
+            ? 'ontime'
+            : isLongDelay ? 'long' : 'short';
+        const languageKey = state.language === 'zh-TW' ? 'zh' : state.language;
+        const passengerMessage = update.passengerMessage;
+        const controllerMessage = typeof passengerMessage === 'string'
+          ? passengerMessage
+          : passengerMessage && (passengerMessage[languageKey] || passengerMessage.en);
+        const date = update.newDepartureDate || update.date || base.departure.date;
+        return {
+          id: 'published',
+          flightNo: update.flightNumber,
+          origin: { code: update.route.from || 'HKG', cityKey: (update.route.from || 'HKG') === 'HKG' ? 'cityHKG' : null },
+          destination: { code: update.route.to || base.destination.code, name: update.route.toName || update.route.to || base.destination.code },
+          departure: {
+            date: date,
+            scheduled: update.scheduledDeparture || base.departure.scheduled,
+            time: update.status === 'cancelled' ? null : (update.newDeparture || null),
+            timeType: 'estimated'
+          },
+          arrival: { date: date, scheduled: '—', time: null, timeType: 'estimated' },
+          status: update.status === 'cancelled' ? 'cancelled' : update.status === 'delayed' ? 'delayed' : 'scheduled',
+          statusColour: update.statusColour,
+          delayMinutes: delay,
+          reasonKey: reasonKey,
+          controllerMessage: controllerMessage || ''
+        };
+      }
       const s = SCENARIOS[state.scenario];
       if (!s) return base;
       return Object.assign({}, base, {
@@ -589,24 +675,27 @@
     /* =========================================================
        HERO (large status card)
        ========================================================= */
-    function heroTimeBlock(kind, leg, airportCode, cityKey, alignClass, isCancelled) {
+    function heroTimeBlock(kind, leg, airportCode, cityName, alignClass, isCancelled) {
       const typeLabel = isCancelled ? '' : ' · ' + (leg.timeType === 'actual' ? t('actual') : t('estimated'));
       const shown = leg.time || '—';
-      const changed = !leg.time || leg.time !== leg.scheduled;
+      const hasScheduledTime = leg.scheduled && leg.scheduled !== '—';
+      const changed = hasScheduledTime && (!leg.time || leg.time !== leg.scheduled);
       const was = changed ? escapeHtml(fill(t('was'), { time: leg.scheduled })) : '&nbsp;';
       return (
         '<div class="' + alignClass + '">' +
           '<div class="ht-label">' + escapeHtml(t(kind) + typeLabel) + '</div>' +
           '<div class="ht-time">' + escapeHtml(shown) + '</div>' +
           '<div class="ht-was">' + (changed ? '<s>' + was + '</s>' : was) + '</div>' +
-          '<div class="ht-code">' + escapeHtml(airportCode + ' · ' + t(cityKey)) + '</div>' +
+          '<div class="ht-code">' + escapeHtml(airportCode + ' · ' + cityName) + '</div>' +
         '</div>'
       );
     }
 
     function buildHero(f, sev) {
       const delay = maxDelay(f);
-      let sub = t('sev_' + sev);
+      let sub = f.status === 'delayed'
+        ? t('sev_' + (f.reasonKey === 'long' ? 'red' : 'yellow'))
+        : t('sev_' + sev);
       if (f.status === 'delayed' && delay > 0) {
         sub += ' · +' + delay + ' ' + t('min');
       }
@@ -628,9 +717,9 @@
           '<div class="hero-icon">' + ICONS[SEVERITY_ICON[sev]] + '</div>' +
         '</div>' +
         '<div class="hero-times">' +
-          heroTimeBlock('departure', f.departure, f.origin.code, f.origin.cityKey, 'ht-dep', isCancelled) +
+          heroTimeBlock('departure', f.departure, f.origin.code, cityLabel(f.origin), 'ht-dep', isCancelled) +
           '<div class="ht-line">' + ICONS.plane + ICONS.dotted + ICONS.pin + '</div>' +
-          heroTimeBlock('arrival', f.arrival, f.destination.code, f.destination.cityKey, 'ht-arr', isCancelled) +
+          heroTimeBlock('arrival', f.arrival, f.destination.code, cityLabel(f.destination), 'ht-arr', isCancelled) +
         '</div>'
       );
     }
@@ -656,9 +745,9 @@
         '<div class="reason-head">' +
           '<h2 class="reason-title">' + escapeHtml(title) + '</h2>' +
         '</div>' +
-        '<p class="reason-text">' + escapeHtml(t('reason_' + f.reasonKey)) + '</p>' +
+        '<p class="reason-text">' + escapeHtml(f.controllerMessage || t('reason_' + f.reasonKey)) + '</p>' +
         progress +
-        '<p class="reason-detail">' + escapeHtml(t('detail_' + f.reasonKey)) + '</p>'
+        (f.controllerMessage ? '' : '<p class="reason-detail">' + escapeHtml(t('detail_' + f.reasonKey)) + '</p>')
       );
     }
 
@@ -676,9 +765,9 @@
           '<h3 class="col-title">' + escapeHtml(t('routeSchedule')) + '</h3>' +
           '<div class="route-visual">' + ICONS.plane + ICONS.dotted + ICONS.pin + '</div>' +
           '<div class="route-codes"><span>' + escapeHtml(f.origin.code) + '</span><span>' + escapeHtml(f.destination.code) + '</span></div>' +
-          '<div class="route-cities"><span>' + escapeHtml(t(f.origin.cityKey)) + '</span><span>' + escapeHtml(t(f.destination.cityKey)) + '</span></div>' +
+          '<div class="route-cities"><span>' + escapeHtml(cityLabel(f.origin)) + '</span><span>' + escapeHtml(cityLabel(f.destination)) + '</span></div>' +
           field(t('date'), escapeHtml(formatDate(f.departure.date))) +
-          field(t('scheduled'), escapeHtml(f.departure.scheduled + ' – ' + f.arrival.scheduled), 'time') +
+          field(t('scheduled'), escapeHtml(f.arrival.scheduled === '—' ? f.departure.scheduled : f.departure.scheduled + ' – ' + f.arrival.scheduled), 'time') +
         '</div>';
 
       function legCol(titleKey, leg, timeLabel, delay, code) {
@@ -731,8 +820,8 @@
       if (!f) return;
 
       els.pageTitle.textContent = fill(t('routeTitle'), {
-        from: t(f.origin.cityKey), fromCode: f.origin.code,
-        to: t(f.destination.cityKey), toCode: f.destination.code
+        from: cityLabel(f.origin), fromCode: f.origin.code,
+        to: cityLabel(f.destination), toCode: f.destination.code
       });
 
       const sev = getSeverity(f);
@@ -817,13 +906,13 @@
       els.refreshLabel.textContent = t('refreshing');
 
       fetchFlightStatus().then(function () {
-        state.flightNumber = state.pendingFlightNumber;
+        state.publishedUpdate = readControllerUpdate(state.pendingFlightNumber);
+        state.flightNumber = state.publishedUpdate
+          ? state.publishedUpdate.flightNumber
+          : state.pendingFlightNumber;
+        state.pendingFlightNumber = state.flightNumber;
         localStorage.setItem('passengerFlightNumber', state.flightNumber);
-        const controllerScenario = localStorage.getItem('flightScenario');
-        state.scenario = localStorage.getItem('controllerFlightNumber') === state.flightNumber &&
-          SCENARIOS[controllerScenario]
-          ? controllerScenario
-          : 'diverted';
+        if (!state.publishedUpdate) state.scenario = 'diverted';
         state.lastUpdated = new Date();
         setLoading(false);
         els.refreshBtn.disabled = false;

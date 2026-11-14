@@ -1,79 +1,458 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flight Status Controller</title>
-  <link rel="stylesheet" href="../UI%20Passenger/styles.css" />
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HK Express IOC – Delay Update Console (Demo)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="controller page">
-    <p class="page-eyebrow">Demo controls</p>
-    <h1 class="page-title">Flight status controller</h1>
-    <p class="controller-help">Choose a scenario to update the passenger page in another tab in this browser.</p>
-    <div class="flight-selector controller-flight-selector">
-      <label for="flightNumberInput">Flight number</label>
-      <input id="flightNumberInput" type="text" maxlength="10" autocomplete="off" placeholder="e.g. UO612" />
-    </div>
-    <div class="controller-options" role="group" aria-label="Flight status scenario">
-      <button type="button" class="scenario-btn" data-scenario="ontime">On time</button>
-      <button type="button" class="scenario-btn" data-scenario="short">Short delay</button>
-      <button type="button" class="scenario-btn" data-scenario="long">Long delay</button>
-      <button type="button" class="scenario-btn" data-scenario="cancelled">Cancelled</button>
-      <button type="button" class="scenario-btn" data-scenario="diverted">Diverted</button>
-    </div>
-    <p id="controllerStatus" class="controller-status" role="status" aria-live="polite">Current scenario: Diverted</p>
-    <a class="controller-passenger-link" href="../UI%20Passenger/index.html" target="_blank" rel="noopener">Open passenger page in another tab</a>
-  </main>
-  <script>
-    (function () {
-      'use strict';
-      var names = {
-        ontime: 'On time',
-        short: 'Short delay',
-        long: 'Long delay',
-        cancelled: 'Cancelled',
-        diverted: 'Diverted'
-      };
-      var buttons = document.querySelectorAll('[data-scenario]');
-      var status = document.getElementById('controllerStatus');
-      var flightNumberInput = document.getElementById('flightNumberInput');
+<div class="sticky">
+<header>
+  <div class="logo">HK express</div>
+  <div class="htag"><i class="fa-solid fa-tower-broadcast"></i> IOC · Delay Update Console</div>
+  <div hidden=""><b id="clk"></b><small id="clkS"></small></div>
+</header>
+<nav class="stepper" aria-label="Progress"><ol id="steps"></ol></nav>
+</div>
 
-      function currentScenario() {
-        var value = new URLSearchParams(window.location.search).get('scenario') || localStorage.getItem('flightScenario') || 'diverted';
-        return names[value] ? value : 'diverted';
-      }
+<main>
+ <section class="card" aria-labelledby="s1">
+  <h2 id="s1"><i class="fa-solid fa-plane-departure"></i> 1 · Flight</h2>
+  <div class="fl">
+   <div>
+    <label class="big" for="fno">Flight number</label>
+    <input id="fno" autocomplete="off" placeholder="e.g. UO 870" aria-describedby="ferr" maxlength="7">
+    <div class="err" id="ferr" role="alert"></div>
+   </div>
+   <div class="pills" id="pills" hidden=""></div>
+  </div>
+  <div id="banner"></div>
+ </section>
 
-      function updateSelected() {
-        var current = currentScenario();
-        buttons.forEach(function (button) {
-          button.setAttribute('aria-pressed', button.getAttribute('data-scenario') === current ? 'true' : 'false');
-        });
-        status.textContent = 'Current scenario: ' + names[current];
-        flightNumberInput.value = localStorage.getItem('controllerFlightNumber') || 'UO612';
-      }
+ <section class="card" aria-labelledby="s2">
+  <h2 id="s2"><i class="fa-solid fa-layer-group"></i> 2 · Type of delay</h2>
+  <div class="types" id="types" role="group" aria-label="Type of delay"></div>
+ </section>
 
-      buttons.forEach(function (button) {
-        button.addEventListener('click', function () {
-          var scenario = button.getAttribute('data-scenario');
-          localStorage.setItem('flightScenario', scenario);
-          updateSelected();
-        });
-      });
+ <section class="card" aria-labelledby="s3">
+  <h2 id="s3"><i class="fa-solid fa-circle-question"></i> 3 · What happened <span class="hint">Picking a reason pre-fills Step 4</span></h2>
+  <div id="reasons"></div>
+ </section>
 
-      flightNumberInput.addEventListener('input', function () {
-        var flightNumber = flightNumberInput.value.trim().toUpperCase() || 'UO612';
-        localStorage.setItem('controllerFlightNumber', flightNumber);
-      });
-      flightNumberInput.addEventListener('blur', function () {
-        flightNumberInput.value = flightNumberInput.value.trim().toUpperCase() || 'UO612';
-      });
+ <section class="card" aria-labelledby="s4">
+  <h2 id="s4"><i class="fa-solid fa-sliders"></i> 4 · Delay details</h2>
+  <div class="grid3" id="details"></div>
+ </section>
 
-      window.addEventListener('storage', function (e) {
-        if (e.key === 'controllerFlightNumber' || e.key === 'flightScenario') updateSelected();
-      });
-      updateSelected();
-    })();
-  </script>
-</body>
-</html>
+ <section class="card" aria-labelledby="s5">
+  <h2 id="s5"><i class="fa-solid fa-gauge-high"></i> 5 · Auto results <span class="hint">From HK Express policy · display only</span></h2>
+  <div class="res" id="results"></div>
+ </section>
+
+ <section class="card" aria-labelledby="s6">
+  <h2 id="s6"><i class="fa-solid fa-comment-sms"></i> 6 · Preview</h2>
+  <div class="pv">
+   <div class="ioc" hidden=""><span class="lk"><i class="fa-solid fa-lock"></i> Never shown to passengers</span><span class="lab">IOC INPUT (INTERNAL)</span><div id="iocNote" style="margin-top:6px"></div></div>
+   <div class="arr" aria-hidden="true" hidden=""><i class="fa-solid fa-arrow-right"></i></div>
+   <div class="phonebox">
+    <div class="sender"><div class="av">HKX</div>HK Express <span class="muted" style="font-weight:500">· SMS</span></div>
+    <div class="bubble"><span class="pn">1</span><span id="m1"></span></div>
+    <div class="bubble"><span class="pn">2</span><span id="m2"></span></div>
+    <div class="bubble"><span class="pn">3</span><span id="m3"></span></div>
+    <div class="cnt" id="cnt"></div>
+   </div>
+  </div>
+  <div class="warn" id="warn" role="alert"></div>
+  <div class="annc"><b>📢 Counter announcement</b><span id="annc"></span></div>
+ </section>
+
+ <section class="card" aria-labelledby="s7" hidden="">
+  <h2 id="s7"><i class="fa-solid fa-clock-rotate-left"></i> Update log</h2>
+  <div id="log"></div>
+  <button class="btn2" id="reset"><i class="fa-solid fa-rotate-left"></i> Reset flight to on time</button>
+ </section>
+
+ <section class="card" hidden="">
+  <details id="jsonBox"><summary>{ } Data sent to passenger page</summary>
+   <pre id="json"></pre>
+   <div class="tx" id="txInfo"></div>
+  </details>
+ </section>
+</main>
+
+<div class="bar"><div class="in">
+ <div class="sum" id="sum"></div>
+ <button id="pub"><i class="fa-solid fa-paper-plane"></i> Publish update</button>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const PUBLISH_ENDPOINT = '';            // optional: URL the teammate's page/server accepts POST JSON on
+const CHANNEL = 'hkexpress-flight-updates'; // BroadcastChannel + postMessage type
+const LS_PREFIX = 'hkexpress:flight:';  // localStorage key = prefix + "UO 870|2026-11-15"
+
+/* ============ DATA ============ */
+const ROUTES={NRT:['Tokyo Narita','Tokyo','東京','東京','도쿄'],KIX:['Osaka Kansai','Osaka','大阪','大阪','오사카'],TPE:['Taipei','Taipei','台北','台北','타이베이'],
+ ICN:['Seoul Incheon','Seoul','首爾','ソウル','서울'],CTS:['Sapporo','Sapporo','札幌','札幌','삿포로'],FUK:['Fukuoka','Fukuoka','福岡','福岡','후쿠오카'],BKK:['Bangkok','Bangkok','曼谷','バンコク','방콕']};
+const GATES=['19','21','23','26','28','31','34'],PAX=[150,176,188,220];
+const PRESETS={'UO 870':{to:'NRT',day:0,std:14*60+55,gate:'23',pax:188},'UO 702':{to:'TPE',day:0,std:20*60+40,gate:'31',pax:176},'UO 116':{to:'CTS',day:1,std:8*60+30,gate:'19',pax:220}};
+const CATS=[['technical','Technical','fa-screwdriver-wrench'],['weather','Weather','fa-cloud-bolt'],['air_traffic','Air Traffic','fa-tower-broadcast'],['crew','Team arrangements','fa-user-group'],
+ ['late_aircraft','Late Aircraft','fa-plane-arrival'],['ground_ops','Ground Ops','fa-truck-ramp-box'],['security_medical','Security / Medical','fa-shield-halved'],['airport','Airport','fa-building']];
+// [id, name, severity, delay(min|'TBC'|'CX'), confidence, nextUpdate, internal note, passenger wording]
+const R={
+technical:[
+ ['lightning_strike','Lightning strike inspection','Moderate',90,'likely',30,'Inbound lightning strike on approach. Mandatory inspection per AMM.',"The aircraft for your flight was struck by lightning on its way in. Aircraft are built for this, but a standard safety inspection is needed before it flies again."],
+ ['hydraulic_warning','Hydraulic pressure warning','Moderate',50,'likely',30,'A320 hydraulic sys pressure caution on pre-flight. Eng rectification ETA 45 min.',"Our engineers found a warning during the routine pre-flight check and are fixing it now."],
+ ['bird_strike','Bird strike inspection','Moderate',70,'likely',30,'Bird strike on inbound sector. Inspection required.',"Our engineers are doing a routine safety inspection after the aircraft's last flight."],
+ ['spare_part','Waiting for spare part','Major',180,'uncertain',30,'Component replacement needed. Part ex-store ETA 2h, fit 1h.',"A replacement part is being brought to the aircraft and fitted by our engineers."],
+ ['tyre_brake','Tyre / brake change','Minor',40,'firm',15,'Main wheel tyre worn beyond limits.',"Our engineers are completing scheduled maintenance on the aircraft."],
+ ['aog','Aircraft grounded – AOG','Cancelled','CX',null,null,'AOG. No spare aircraft. Reprotect next day.',"We're very sorry. Your aircraft needs repairs that can't be completed today, so this flight has been cancelled."]],
+weather:[
+ ['thunderstorm_hkg','Thunderstorm at HKG – ground work paused','Major','TBC','uncertain',15,'Red lightning warning HKG. Apron ops suspended.',"Thunderstorms around Hong Kong mean all ground work has been paused for everyone's safety."],
+ ['typhoon_t8','Typhoon signal No. 8','Cancelled','CX',null,null,'T8 hoisted. Schedule cancelled.',"Because of the typhoon, your flight has been cancelled. Please don't come to the airport."],
+ ['destination_weather','Weather at destination','Moderate',60,'likely',30,'Destination below minima, holding.',"Weather at your destination is slowing arrivals there."],
+ ['low_visibility','Low visibility / fog','Minor',45,'likely',30,'LVP in force, reduced departure rate.',"Low visibility is slowing down departures."]],
+air_traffic:[
+ ['departure_slot','Departure slot restriction','Minor',40,'firm',30,'ATFM slot CTOT +40.',"Air traffic control has given us a later departure slot."],
+ ['airspace_congestion','Airspace congestion','Moderate',60,'likely',30,'Flow control en route.',"Busy airspace along our route means we've been asked to wait."]],
+crew:[
+ ['crew_late','Team connecting from another flight','Minor',45,'likely',30,'Operating crew positioning, ETA +40.',"Part of our crew is connecting from another flight and will join yours shortly."],
+ ['crew_sickness','Team change','Moderate',120,'likely',30,'FO sick call. Standby crew called from home.',"We're making a change to the crew on your flight, and a new crew member is on the way."],
+ ['crew_duty_limit','Safety rest rules','Major',240,'uncertain',30,'Crew will exceed FDP. Replacement crew required.',"To follow safety rules on rest time, we're arranging a fresh crew for your flight."]],
+late_aircraft:[
+ ['previous_flight_late','Previous flight arrived late','Minor',40,'firm',30,'Inbound off-blocks +35.',"The aircraft for your flight is arriving late from its previous journey."],
+ ['aircraft_swap','Aircraft swap','Moderate',90,'likely',30,'Tail swap, gate change likely.',"We've assigned a different aircraft to your flight. It's being prepared now."]],
+ground_ops:[
+ ['refuelling_delay','Refuelling delay','Minor',25,'firm',15,'Fuel bowser late.',"Preparing the aircraft is taking a little longer than planned."],
+ ['baggage_loading','Baggage loading','Minor',20,'firm',15,'Loading behind schedule.',"We're finishing loading baggage onto the aircraft."],
+ ['remote_stand_bus','Remote stand bus delay','Minor',15,'firm',15,'Apron bus shortage.',"Transport out to the aircraft is taking longer than planned."]],
+security_medical:[
+ ['no_show_bag_offload','No-show bag offload','Minor',25,'likely',15,'2 no-show pax, 3 bags to offload.',"We need to remove the bags of a passenger who didn't board. This is a standard security step."],
+ ['medical_assistance','Medical assistance','Minor',30,'likely',15,'Pax unwell at gate, medical team attending.',"We're helping a passenger who needs assistance."],
+ ['security_rescreening','Security re-screening','Moderate',45,'likely',15,'Unattended item, re-screening required.',"A standard security check is being completed."]],
+airport:[
+ ['stand_unavailable','Stand / gate unavailable','Minor',30,'likely',15,'Stand occupied, tow pending.',"The aircraft's parking position isn't available yet."],
+ ['airport_system_outage','Airport system outage','Major','TBC','uncertain',15,'Airport system outage.',"An airport system problem is slowing departures."],
+ ['jet_bridge_fault','Jet bridge fault','Minor',20,'firm',15,'Air bridge fault, steps requested.',"Airport equipment at the gate is being fixed."]]
+};
+// translated reason sentences (category level; cancellations specific)
+const TR={
+ zh:{technical:'我們的工程師正在為飛機進行例行安全檢查及維修。',weather:'天氣情況影響航班運作，安全是我們的首要考慮。',air_traffic:'航空交通管制安排了較遲的起飛時段。',crew:'我們正在為您的航班安排團隊，新的團隊成員即將到達。',late_aircraft:'執行您航班的飛機延遲抵達。',ground_ops:'地勤團隊正在完成起飛前的準備工作。',security_medical:'我們正在完成標準的安全及協助程序。',airport:'機場設施問題影響了航班出發。',aog:'飛機需要維修，今日未能完成，因此航班已取消。',typhoon_t8:'由於颱風，您的航班已取消。請勿前往機場。'},
+ ja:{technical:'整備士が機体の定例安全点検・整備を行っております。',weather:'天候の影響により運航に遅れが出ております。安全を最優先しております。',air_traffic:'航空管制の指示により、出発枠が遅くなりました。',crew:'ご搭乗便のチーム体制を整えており、新しいメンバーがまもなく合流いたします。',late_aircraft:'ご搭乗予定の機材の到着が遅れております。',ground_ops:'地上スタッフが出発準備を進めております。',security_medical:'標準的な保安・お客様対応の手続きを行っております。',airport:'空港設備の問題により出発が遅れております。',aog:'機体の整備が本日中に完了しないため、欠航となりました。',typhoon_t8:'台風のため、ご予約の便は欠航となりました。空港へはお越しにならないでください。'},
+ ko:{technical:'정비사가 항공기의 정기 안전 점검 및 정비를 진행하고 있습니다.',weather:'기상 상황으로 운항이 지연되고 있습니다. 안전을 최우선으로 합니다.',air_traffic:'항공교통관제에 따라 출발 시간이 늦춰졌습니다.',crew:'고객님의 항공편을 위해 팀을 준비하고 있으며, 새 팀원이 곧 합류합니다.',late_aircraft:'고객님의 항공편 항공기가 늦게 도착하고 있습니다.',ground_ops:'지상 직원이 출발 준비를 마무리하고 있습니다.',security_medical:'표준 보안 및 지원 절차를 진행하고 있습니다.',airport:'공항 시설 문제로 출발이 지연되고 있습니다.',aog:'항공기 수리가 오늘 완료될 수 없어 항공편이 취소되었습니다.',typhoon_t8:'태풍으로 인해 항공편이 취소되었습니다. 공항에 오지 마십시오.'}
+};
+const LI={en:1,zh:2,ja:3,ko:4};
+const T={
+ en:{sorry:(f,c)=>`We're sorry, ${f} to ${c} is delayed.`,sorryCx:(f,c)=>`We're sorry, ${f} to ${c} is cancelled.`,neutral:(f,c)=>`${f} to ${c} is delayed.`,neutralCx:(f,c)=>`${f} to ${c} is cancelled.`,
+  ontime:(f,c)=>`Good news: ${f} to ${c} is back on time. The earlier delay has been resolved.`,fu:(f,o,n)=>`Update on ${f}: your departure time has changed from ${o} to ${n}.`,fu0:f=>`Update on ${f}:`,corr:'Correction to our earlier message:',
+  firm:t=>`Your new departure time is ${t}.`,likely:t=>`We expect to depart at around ${t}. This may still change.`,uncertain:()=>`We don't have a confirmed departure time yet.`,
+  next:t=>`We'll update you again by ${t}.`,board:`We'll message you when boarding starts.`,gate:g=>`Your gate has changed to Gate ${g}.`,
+  cx:(d,h)=>`You've been rebooked on the next available flight on ${d}. You can also change for free or request a full refund.${h?" We'll provide a hotel tonight.":''}`,
+  st:c=>`Status: ${c}.`,rec:l=>` Passengers on this flight receive: ${l}.`,none:' No compensation applies to this delay.',col:{GREEN:'GREEN',YELLOW:'YELLOW',RED:'RED'},
+  ent:{asia_miles_500:'500 Asia Miles',meal_voucher_80:'HK$80 meal voucher',free_change:'free flight change',rebooking:'free rebooking',refund:'full refund option',hotel:'hotel stay'},join:', ',
+  p3:f=>`Live updates: go to hkexpress.com → Flight Status and enter ${f}. HK Express never sends links by SMS.`},
+ zh:{sorry:(f,c)=>`很抱歉，${f}前往${c}的航班延誤。`,sorryCx:(f,c)=>`很抱歉，${f}前往${c}的航班已取消。`,neutral:(f,c)=>`${f}前往${c}的航班延誤。`,neutralCx:(f,c)=>`${f}前往${c}的航班已取消。`,
+  ontime:(f,c)=>`好消息：${f}前往${c}的航班已恢復準時，較早前的延誤已解決。`,fu:(f,o,n)=>`${f}最新消息：起飛時間由${o}更改為${n}。`,fu0:f=>`${f}最新消息：`,corr:'更正較早前的訊息：',
+  firm:t=>`新起飛時間為${t}。`,likely:t=>`預計約於${t}起飛，時間或有變動。`,uncertain:()=>`暫時未有確定的起飛時間。`,next:t=>`我們將於${t}前再次更新。`,board:'開始登機時我們會通知您。',gate:g=>`登機閘口已更改為${g}號。`,
+  cx:(d,h)=>`我們已為您改乘${d}的下一班航班，亦可免費更改或申請全額退款。${h?'我們會為您安排今晚的酒店住宿。':''}`,
+  st:c=>`狀態：${c}。`,rec:l=>`本航班乘客可獲：${l}。`,none:'此延誤不設補償。',col:{GREEN:'綠色',YELLOW:'黃色',RED:'紅色'},
+  ent:{asia_miles_500:'500亞洲萬里通里數',meal_voucher_80:'HK$80餐飲券',free_change:'免費更改航班',rebooking:'免費改乘',refund:'全額退款選項',hotel:'酒店住宿'},join:'、',
+  p3:f=>`最新消息：請前往 hkexpress.com →「航班狀態」並輸入 ${f}。HK Express 從不以短訊發送連結。`},
+ ja:{sorry:(f,c)=>`申し訳ございません。${f}便${c}行きは遅延しております。`,sorryCx:(f,c)=>`申し訳ございません。${f}便${c}行きは欠航となりました。`,neutral:(f,c)=>`${f}便${c}行きは遅延しております。`,neutralCx:(f,c)=>`${f}便${c}行きは欠航となりました。`,
+  ontime:(f,c)=>`${f}便${c}行きは定刻に戻りました。先ほどの遅延は解消されました。`,fu:(f,o,n)=>`${f}便の最新情報：出発時刻が${o}から${n}に変更されました。`,fu0:f=>`${f}便の最新情報：`,corr:'先ほどのご案内の訂正：',
+  firm:t=>`新しい出発時刻は${t}です。`,likely:t=>`${t}頃の出発を見込んでおりますが、変更の可能性があります。`,uncertain:()=>`現時点で出発時刻は未定です。`,next:t=>`${t}までに改めてお知らせします。`,board:'搭乗開始時にお知らせします。',gate:g=>`搭乗口は${g}番に変更されました。`,
+  cx:(d,h)=>`${d}の次の便へお振替えしました。無料変更または全額返金も可能です。${h?'本日のホテルをご用意します。':''}`,
+  st:c=>`ステータス：${c}。`,rec:l=>`本便のお客様への対応：${l}。`,none:'今回の遅延は補償対象外です。',col:{GREEN:'緑',YELLOW:'黄',RED:'赤'},
+  ent:{asia_miles_500:'500アジア・マイル',meal_voucher_80:'HK$80のお食事券',free_change:'無料便変更',rebooking:'無料振替',refund:'全額返金',hotel:'ホテル宿泊'},join:'、',
+  p3:f=>`最新情報：hkexpress.com →「フライト状況」で ${f} を入力してください。HK ExpressがSMSでリンクを送ることはありません。`},
+ ko:{sorry:(f,c)=>`죄송합니다. ${c}행 ${f} 항공편이 지연되었습니다.`,sorryCx:(f,c)=>`죄송합니다. ${c}행 ${f} 항공편이 취소되었습니다.`,neutral:(f,c)=>`${c}행 ${f} 항공편이 지연되었습니다.`,neutralCx:(f,c)=>`${c}행 ${f} 항공편이 취소되었습니다.`,
+  ontime:(f,c)=>`좋은 소식입니다. ${c}행 ${f} 항공편이 정시 운항합니다. 앞선 지연이 해소되었습니다.`,fu:(f,o,n)=>`${f} 업데이트: 출발 시간이 ${o}에서 ${n}(으)로 변경되었습니다.`,fu0:f=>`${f} 업데이트:`,corr:'앞선 안내 정정:',
+  firm:t=>`새 출발 시간은 ${t}입니다.`,likely:t=>`${t}경 출발 예정이며, 변경될 수 있습니다.`,uncertain:()=>`아직 확정된 출발 시간이 없습니다.`,next:t=>`${t}까지 다시 안내해 드리겠습니다.`,board:'탑승이 시작되면 안내해 드리겠습니다.',gate:g=>`탑승구가 ${g}번으로 변경되었습니다.`,
+  cx:(d,h)=>`${d} 다음 항공편으로 변경해 드렸습니다. 무료 변경 또는 전액 환불도 가능합니다.${h?' 오늘 밤 호텔을 제공해 드립니다.':''}`,
+  st:c=>`상태: ${c}.`,rec:l=>` 이 항공편 승객 혜택: ${l}.`,none:' 이번 지연은 보상 대상이 아닙니다.',col:{GREEN:'초록',YELLOW:'노랑',RED:'빨강'},
+  ent:{asia_miles_500:'500 아시아 마일즈',meal_voucher_80:'HK$80 식사 쿠폰',free_change:'무료 항공편 변경',rebooking:'무료 재예약',refund:'전액 환불',hotel:'호텔 숙박'},join:', ',
+  p3:f=>`실시간 정보: hkexpress.com → 항공편 현황에서 ${f}을(를) 입력하세요. HK Express는 SMS로 링크를 보내지 않습니다.`}
+};
+const DELAYS=[0,15,20,25,30,40,45,50,60,70,90,120,180,240,360,'TBC','CX'];
+const BANNED=['engine','fire','smoke','leak','failure','emergency','hydraulic','aog'];
+const BANNED_TEAM=['pilot','sick','sickness','late','error','problem','shortage'];
+const ENT_IC={asia_miles_500:'✈',meal_voucher_80:'🍽',free_change:'↻',rebooking:'↻',refund:'💳',hotel:'🏨'};
+
+/* ============ HELPERS ============ */
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const todayISO=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Hong_Kong'}).format(new Date());
+function addDays(iso,n){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function dLabel(iso,lang='en'){const d=new Date(iso+'T00:00:00Z'),m=d.getUTCMonth(),day=d.getUTCDate();
+ if(lang==='zh'||lang==='ja')return `${m+1}月${day}日`;if(lang==='ko')return `${m+1}월 ${day}일`;return `${day} ${MON[m]}`}
+const hm=m=>pad(Math.floor(((m%1440)+1440)%1440/60))+':'+pad(((m%1440)+1440)%1440%60);
+function durLabel(n){if(n===0)return 'On time';const h=Math.floor(n/60),m=n%60;return '+'+(h?h+'h'+(m?' '+m+'m':''):m+' min')}
+// time with date if not on the flight date
+function timeOn(total,lang='en'){const off=Math.floor(total/1440),t=hm(total);if(!off)return t;const d=addDays(F.date,off);
+ return lang==='en'?`${t}, ${dLabel(d)}`:`${dLabel(d,lang)} ${t}`}
+
+/* ============ STATE ============ */
+const F={no:'',valid:false,to:'NRT',day:0,std:14*60+55,gate:'23',pax:188,date:todayISO};
+let sel={cat:null,reason:null};
+let det={},defs={},published={},log=[],pubDone=false;
+let demoBase=F.std-45,demoStart=Date.now();
+function demoNow(){return demoBase+Math.floor((Date.now()-demoStart)/60000)}
+function demoSecs(){return Math.floor((Date.now()-demoStart)/1000)%60}
+function key(){return F.no+'|'+F.date}
+function resetDemoClock(){demoBase=F.std-45;demoStart=Date.now()}
+function reasonObj(){if(!sel.cat||!sel.reason)return null;const r=R[sel.cat].find(x=>x[0]===sel.reason);
+ return r&&{id:r[0],name:r[1],sev:r[2],delay:r[3],conf:r[4],next:r[5],note:r[6],pax:r[7]}}
+function prefill(){const r=reasonObj();if(!r){det={};defs={};return}
+ const prev=published[key()];
+ defs={delay:r.delay,conf:r.conf||'likely',next:r.next||30,mtype:prev&&prev.status!=='on_time'?'follow_up':'first_notice',gate:F.gate,note:0,lang:det.lang||'en'};
+ det={...defs};}
+
+/* ============ CALC ============ */
+function calc(){
+ const r=reasonObj();if(!r)return null;
+ const d=det.delay,cx=d==='CX',tbc=d==='TBC',ontime=d===0;
+ let conf=cx?null:(tbc?'uncertain':det.conf); if(ontime)conf=null;
+ const mins=(cx||tbc)?null:d;
+ const colour=cx?'RED':tbc?'RED':mins<60?'GREEN':mins<180?'YELLOW':'RED';
+ const label=cx?'Major disruption':tbc?'Major disruption':ontime?'On time':mins<60?'Delay under 1 hour':mins<180?'Delay over 1 hour':'Major disruption';
+ let ents=[];
+ if(cx){ents=['rebooking','refund','hotel']}  // rebooked onto next-day flight → hotel
+ else if(mins!=null){if(mins>=60)ents.push('asia_miles_500');if(mins>=180)ents.push('meal_voucher_80');if(mins>=300)ents.push('free_change')}
+ const showTime=!cx&&!tbc&&conf!=='uncertain';
+ const newTot=mins!=null?F.std+mins:null;
+ const newDeparture=showTime&&newTot!=null?hm(newTot):null;
+ const newDate=newTot!=null?addDays(F.date,Math.floor(newTot/1440)):null;
+ const nextAt=(cx||ontime)?null:det.next==='boarding'?'at_boarding':hm(demoNow()+Number(det.next));
+ const status=cx?'cancelled':ontime?'on_time':'delayed';
+ const gateChanged=det.gate!==F.gate;
+ return{r,d,cx,tbc,ontime,conf,mins,colour,label,ents,showTime,newTot,newDeparture,newDate,nextAt,status,gateChanged};
+}
+function buildMsg(c,lang){
+ const t=T[lang],f=F.no,city=ROUTES[F.to][LI[lang]],prev=published[key()];
+ let parts=[];
+ const tm=c.showTime&&c.newTot!=null?timeOn(c.newTot,lang):null;
+ // opening
+ if(c.ontime){parts.push(det.mtype==='correction'?t.corr+' '+t.ontime(f,city):t.ontime(f,city))}
+ else if(det.mtype==='follow_up'){
+  const old=prev&&prev.display;
+  if(c.cx)parts.push(t.fu0(f)+' '+t.neutralCx(f,city));
+  else if(tm&&old&&old!==tm)parts.push(t.fu(f,old,tm));
+  else parts.push(t.fu0(f));
+ }else if(det.mtype==='correction'){parts.push(t.corr+' '+(c.cx?t.neutralCx(f,city):t.neutral(f,city)))}
+ else parts.push(c.cx?t.sorryCx(f,city):t.sorry(f,city));
+ // reason
+ if(!c.ontime){parts.push(lang==='en'?c.r.pax:(TR[lang][c.r.id]||TR[lang][sel.cat]))}
+ // time
+ if(c.cx){parts.push(t.cx(lang==='en'?dLabel(addDays(F.date,1)):dLabel(addDays(F.date,1),lang),c.ents.includes('hotel')))}
+ else if(!c.ontime){parts.push(c.conf==='uncertain'?t.uncertain():t[c.conf](tm))}
+ if(c.gateChanged&&!c.cx)parts.push(t.gate(det.gate));
+ if(!c.cx&&!c.ontime)parts.push(det.next==='boarding'?t.board:t.next(c.nextAt));
+ const sep=lang==='en'||lang==='ko'?' ':'';
+ const p1=parts.join(sep);
+ const col=t.col[c.colour];
+ let p2=t.st(col);
+ if(!c.ontime)p2+=c.ents.length?t.rec(c.ents.map(e=>t.ent[e]).join(t.join)):t.none;
+ return{p1,p2,p3:t.p3(f)};
+}
+function announcement(c){
+ const city=ROUTES[F.to][0],tm=c.newTot!=null&&c.showTime?timeOn(c.newTot):null;
+ let s=`Attention please. This is an announcement for HK Express flight ${F.no} to ${city}. `;
+ if(c.ontime)return s+`Good news: this flight is now on time and will depart as scheduled at ${hm(F.std)} from Gate ${det.gate}. Thank you.`;
+ if(c.cx)return s+`We are very sorry to announce that this flight has been cancelled. ${c.r.pax.replace(/^We're very sorry\. /,'')} Passengers have been rebooked on the next available flight tomorrow, with the option of a free change or a full refund, and hotel accommodation tonight. Please see our staff at Gate ${det.gate}. Thank you for your understanding.`;
+ s+=`We're sorry, this flight is delayed. ${c.r.pax} `;
+ s+=c.conf==='uncertain'?`We don't have a confirmed departure time yet. `:c.conf==='firm'?`The new departure time is ${tm}. `:`We expect to depart at around ${tm}. `;
+ if(c.gateChanged)s+=`Please note the gate has changed to Gate ${det.gate}. `;
+ if(c.ents.length)s+=`Passengers on this flight receive ${c.ents.map(e=>T.en.ent[e]).join(', ')}. Please see our staff at the gate. `;
+ s+=det.next==='boarding'?`We will make another announcement when boarding starts. `:`We will update you again by ${c.nextAt}. `;
+ return s+'Thank you for your patience.';
+}
+function noteText(){const r=reasonObj();if(!r)return '';return det.note===1?'Details logged in ops system – see duty manager handover.':r.note}
+function safety(sms){
+ const issues=[],low=sms.toLowerCase();
+ (sel.cat==='crew'?BANNED.concat(BANNED_TEAM):BANNED).forEach(w=>{if(new RegExp('\\b'+w+'\\b','i').test(low))issues.push(`“${w}”`)});
+ const note=noteText();
+ // jargon / codes from the internal note (e.g. AMM, CTOT, FDP, A320)
+ (note.match(/\b[A-Z][A-Z0-9]{1,}\b/g)||[]).forEach(w=>{if(new RegExp('\\b'+w+'\\b').test(sms)&&!issues.includes(`“${w}”`))issues.push(`“${w}” (internal note)`)});
+ // any 3-word phrase copied from the internal note
+ const nw=note.toLowerCase().match(/[a-z0-9']+/g)||[];
+ for(let i=0;i+2<nw.length;i++){const ph=nw.slice(i,i+3).join(' ');if(low.replace(/[^a-z0-9' ]/g,' ').replace(/\s+/g,' ').includes(ph))issues.push(`“${ph}” (internal note)`)}
+ return [...new Set(issues)];
+}
+function payload(c,m4){
+ return{flightNumber:F.no,date:F.date,route:{from:'HKG',to:F.to,toName:ROUTES[F.to][0]},scheduledDeparture:hm(F.std),
+  newDeparture:c.ontime?hm(F.std):c.newDeparture,newDepartureDate:c.cx||(!c.showTime&&!c.ontime)?null:(c.ontime?F.date:c.newDate),
+  delayMinutes:c.cx||c.tbc?null:c.mins,status:c.status,statusColour:c.colour,confidence:c.conf,category:sel.cat,reasonId:c.r.id,
+  messageType:det.mtype,passengerMessage:m4,entitlements:c.ents,nextUpdateAt:c.nextAt,gate:det.gate,gateChanged:c.gateChanged,
+  sentAt:`${addDays(F.date,Math.floor(demoNow()/1440))}T${hm(demoNow())}:${pad(demoSecs())}+08:00`}
+}
+
+/* ============ RENDER ============ */
+let lastCol='',lastEnts='';
+function render(){
+ const fid=document.activeElement&&document.activeElement.id;
+ const c=calc();
+ // stepper
+ const st=[F.valid,!!sel.cat,!!sel.reason,!!sel.reason&&F.valid,pubDone];
+ const names=['Flight','Type','Reason','Details','Publish'];const cur=st.indexOf(false);
+ $('steps').innerHTML=names.map((n,i)=>`<li class="${st[i]?'done':i===cur?'cur':''}" ${i===cur?'aria-current="step"':''}><span class="sc">${st[i]?'✓':i+1}</span>${n}</li>`).join('');
+ // pills
+ const opt=(arr,v,f=x=>x)=>arr.map(a=>`<option value="${a}" ${String(a)===String(v)?'selected':''}>${f(a)}</option>`).join('');
+ const stds=[];for(let m=360;m<=1410;m+=30)stds.push(m);if(!stds.includes(F.std))stds.push(F.std),stds.sort((a,b)=>a-b);
+ $('pills').innerHTML=`
+  <label class="pill">Route <select id="pRoute">${opt(Object.keys(ROUTES),F.to,k=>'HKG→'+k)}</select></label>
+  <label class="pill">Date <select id="pDate">${opt([0,1],F.day,d=>(d?'Tomorrow · ':'Today · ')+dLabel(addDays(todayISO,d)))}</select></label>
+  <label class="pill">STD <select id="pStd">${opt(stds,F.std,hm)}</select></label>
+  <label class="pill">Gate <select id="pGate">${opt(GATES,F.gate)}</select></label>
+  <label class="pill">Pax <select id="pPax">${opt(PAX,F.pax)}</select></label>`;
+ // banner
+ const pub=published[key()];
+ if(!F.valid)$('banner').innerHTML='';
+ else if(!pub||pub.status==='on_time')$('banner').innerHTML=`<div class="banner G"><i class="fa-solid fa-circle-check fa-xl"></i><div><span class="bt">CURRENT STATUS · what passengers see now</span>GREEN · ON TIME · No updates sent</div><div class="bigtime">${hm(F.std)}</div></div>`;
+ else{const cl=pub.colour[0];$('banner').innerHTML=`<div class="banner ${cl}"><i class="fa-solid ${pub.status==='cancelled'?'fa-ban':'fa-clock'} fa-xl"></i><div><span class="bt">CURRENT STATUS · last published ${pub.at}</span>${pub.colour} · ${pub.status==='cancelled'?'CANCELLED':'DELAYED'} · ${esc(pub.reason)}</div><div class="bigtime">${pub.status==='cancelled'?'—':pub.display||'TBC'}</div></div>`}
+ // types
+ $('types').className='types'+(sel.cat?' has':'');
+ $('types').innerHTML=CATS.map(([id,n,ic])=>`<button class="tile ${sel.cat===id?'on':''}" data-cat="${id}" id="cat-${id}" aria-pressed="${sel.cat===id}"><span class="chk">✓</span><i class="fa-solid ${ic} ic" aria-hidden="true"></i>${n}</button>`).join('');
+ // reasons
+ if(!sel.cat)$('reasons').innerHTML='<div class="empty">Pick a type of delay above to see what can happen.</div>';
+ else{$('reasons').innerHTML=`<div class="reasons ${sel.reason?'has':''}" role="group">`+R[sel.cat].map(r=>`<button class="rc ${sel.reason===r[0]?'on':''}" data-r="${r[0]}" id="r-${r[0]}" aria-pressed="${sel.reason===r[0]}"><span class="sev ${r[2]}">${r[2]}</span><b>${r[1]}</b><span class="dl">${r[3]==='CX'?'Cancelled':r[3]==='TBC'?'TBC':durLabel(r[3])}</span> <span class="muted" style="font-size:13px">default delay</span></button>`).join('')+'</div>'}
+ // details
+ if(!c){$('details').innerHTML='<div class="empty" style="grid-column:1/-1">Pick what happened in Step 3 — the details below fill in automatically.</div>'}
+ else{
+  const dflt=k=>String(det[k])===String(defs[k])?'<span class="def">Default</span>':'';
+  const dOpt=DELAYS.map(v=>{let l;if(v==='TBC')l='TBC – time not known';else if(v==='CX')l='Cancelled';else if(v===0)l='On time';else l=`${durLabel(v)} → ${timeOn(F.std+v)}`;return `<option value="${v}" ${String(v)===String(det.delay)?'selected':''}>${l}</option>`}).join('');
+  const confDis=c.cx||c.tbc||c.ontime,nextDis=c.cx||c.ontime;
+  const confWhy=c.cx?'Not used – flight is cancelled':c.tbc?'Locked to Uncertain because the time is TBC':c.ontime?'Not used – flight is on time':'';
+  const nextWhy=c.cx?'Not used – flight is cancelled':c.ontime?'Not used – flight is on time':'';
+  const otherGates=[F.gate,...GATES.filter(g=>g!==F.gate)];
+  const r=reasonObj();
+  $('details').innerHTML=`
+   <div class="fld" title="${nextWhy}"><label for="dNext">Next update in ${nextDis?'':dflt('next')} ${nextDis?'<span class="lock"><i class="fa-solid fa-lock"></i></span>':''}</label><div class="help">${nextWhy||'Promises passengers when they’ll hear more'}</div>
+     <select id="dNext" ${nextDis?'disabled':''}>${[15,30,45,60].map(v=>`<option value="${v}" ${String(det.next)===String(v)?'selected':''}>${v} min → by ${hm(demoNow()+v)}</option>`).join('')}<option value="boarding" ${det.next==='boarding'?'selected':''}>At boarding</option></select></div>
+   <div class="fld"><label for="dType">Message type ${dflt('mtype')}</label><div class="help">First message, a change, or fixing a mistake</div>
+     <select id="dType">${opt(['first_notice','follow_up','correction'],det.mtype,x=>({first_notice:'First notice',follow_up:'Follow-up update',correction:'Correction'}[x]))}</select></div>`;
+ }
+ // results
+ if(!c){$('results').innerHTML='<span class="muted">Results appear once a reason is picked.</span>';}
+ else{
+  const cl=c.colour[0];
+  const entsH=c.ents.length?c.ents.map(e=>`<span class="ent"><span aria-hidden="true">${ENT_IC[e]}</span>${T.en.ent[e]}</span>`).join(''):`<span class="ent none">No entitlements${c.tbc?' until a time is confirmed':c.ontime?'':' (under 1 hour)'}</span>`;
+  const sig=c.colour,es=c.ents.join();
+  $('results').innerHTML=`<div class="light ${cl} ${sig!==lastCol?'pop':''}"><span class="lamps" aria-hidden="true"><span class="g ${cl==='G'?'a':''}"></span><span class="y ${cl==='Y'?'a':''}"></span><span class="r ${cl==='R'?'a':''}"></span></span><div>${c.colour}<small>${c.label}${c.mins!=null&&!c.ontime?' · '+durLabel(c.mins):''}</small></div></div>
+   <div class="ents ${es!==lastEnts?'pop':''}">${entsH}</div>`;
+  lastCol=sig;lastEnts=es;
+ }
+ // preview
+ let issues=[],m4=null;
+ if(c){
+  m4={};const full={};['en','zh','ja','ko'].forEach(l=>{const m=buildMsg(c,l);m4[l]=m.p1;full[l]=m});
+  const m=full[det.lang];$('m1').textContent=m.p1;$('m2').innerHTML=`<b style="color:var(--${c.colour[0].toLowerCase()}T)">●</b> `+esc(m.p2);$('m3').textContent=m.p3;
+  const sms=[m.p1,m.p2,m.p3].join(det.lang==='en'||det.lang==='ko'?' ':'');const len=[...sms].length,per=det.lang==='en'?160:70,parts=Math.ceil(len/per);
+  $('cnt').innerHTML=`<span class="chip">${len} characters</span><span class="chip">${per} per SMS (${det.lang==='en'?'English':'Chinese/Japanese/Korean'})</span><span class="chip" style="color:var(--p)">${parts} SMS part${parts>1?'s':''}</span>`;
+  $('iocNote').textContent=noteText();
+  $('annc').textContent=announcement(c);
+  const en=full.en;issues=safety([en.p1,en.p2,en.p3].join(' '));
+ }else{['m1','m2','m3'].forEach(i=>$(i).textContent='—');$('cnt').innerHTML='';$('iocNote').textContent='—';$('annc').textContent='—'}
+ $('warn').className='warn'+(issues.length?' show':'');
+ $('warn').innerHTML=issues.length?`<i class="fa-solid fa-triangle-exclamation"></i> Safety check failed – the SMS contains ${issues.join(', ')}. Publish is disabled.`:'';
+ // json
+ const pl=c?payload(c,m4):null;window._payload=pl;
+ $('json').textContent=pl?JSON.stringify(pl,null,2):'// Pick a flight and reason to see the data';
+ $('txInfo').innerHTML=`Sent via: localStorage key <code>${LS_PREFIX}${esc(F.no||'UO 870')}|${F.date}</code> · BroadcastChannel <code>${CHANNEL}</code> · window.postMessage${PUBLISH_ENDPOINT?' · POST '+esc(PUBLISH_ENDPOINT):''}. Internal note and passenger data are never included.`;
+ // bottom bar
+ let block='';if(!F.valid)block='Enter a valid flight number';else if(!sel.cat)block='Pick a type of delay';else if(!sel.reason)block='Pick what happened';else if(issues.length)block='Fix the safety warning';
+ const cat=CATS.find(x=>x[0]===sel.cat);
+ $('sum').innerHTML=c&&F.valid?`${F.no} · ${cat[1]} · ${esc(c.r.name)} · ${c.cx?'Cancelled':c.tbc?'TBC':c.ontime?'On time':durLabel(c.mins)+' → '+(c.showTime?timeOn(c.newTot):'TBC')} · <span class="tag ${c.colour[0]}">${c.colour}</span><small>${det.mtype.replace('_',' ')} · publishes to ${F.pax} passengers</small>`
+  :`${F.valid?F.no:'No flight'}<small>${block}</small>`;
+ $('pub').disabled=!!block;$('pub').title=block;
+ // log
+ const rows=log.filter(l=>l.key===key());
+ $('log').innerHTML=rows.length?`<table><thead><tr><th>Time</th><th>Flight</th><th>Reason</th><th>New time</th><th>Status</th><th>Message type</th></tr></thead><tbody>${rows.map(l=>`<tr><td class="mono">${l.at}</td><td><b>${l.no}</b></td><td>${esc(l.reason)}</td><td class="mono">${l.time}</td><td><span class="tag ${l.colour[0]}">${l.colour}</span></td><td>${l.type}</td></tr>`).join('')}</tbody></table>`
+  :'<div class="muted">No updates published for this flight yet.</div>';
+ if(fid&&$(fid)&&fid!=='fno')$(fid).focus();
+}
+
+/* ============ PUBLISH ============ */
+function send(obj){
+ const json=JSON.stringify(obj);
+ try{localStorage.setItem(LS_PREFIX+obj.flightNumber+'|'+obj.date,json);localStorage.setItem(LS_PREFIX+'latest',json)}catch(e){}
+ try{new BroadcastChannel(CHANNEL).postMessage(obj)}catch(e){}
+ try{const msg={type:CHANNEL,payload:obj};if(window.opener)window.opener.postMessage(msg,'*');if(window.parent!==window)window.parent.postMessage(msg,'*');window.postMessage(msg,'*')}catch(e){}
+ window.dispatchEvent(new CustomEvent('hkexpress:flight-update',{detail:obj}));
+ if(PUBLISH_ENDPOINT)fetch(PUBLISH_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:json}).catch(()=>{});
+}
+function toast(t){$('toast').innerHTML='<i class="fa-solid fa-circle-check"></i>'+t;$('toast').classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>$('toast').classList.remove('show'),4500)}
+$('pub').onclick=()=>{
+ const c=calc(),pl=window._payload;if(!c||!pl||$('pub').disabled)return;
+ send(pl);
+ const display=c.cx?null:c.showTime?timeOn(c.newTot):'TBC';
+ published[key()]={status:c.status,colour:c.colour,display,reason:c.r.name,at:hm(demoNow())};
+ if(det.gate!==F.gate)F.gate=det.gate;
+ log.unshift({key:key(),at:hm(demoNow()),no:F.no,reason:c.r.name,time:c.cx?'Cancelled':c.ontime?hm(F.std):display,colour:c.colour,type:{first_notice:'First notice',follow_up:'Follow-up',correction:'Correction'}[det.mtype]});
+ pubDone=true;
+ toast(`Published to ${F.pax} passengers (SMS), Flight Status page and ground staff at Gate ${det.gate}.`);
+ defs.mtype='follow_up';det.mtype='follow_up';defs.gate=F.gate;
+ render();
+};
+$('reset').onclick=()=>{
+ if(!F.valid)return;
+ const obj={flightNumber:F.no,date:F.date,route:{from:'HKG',to:F.to,toName:ROUTES[F.to][0]},scheduledDeparture:hm(F.std),newDeparture:hm(F.std),newDepartureDate:F.date,
+  delayMinutes:0,status:'on_time',statusColour:'GREEN',confidence:null,category:null,reasonId:null,messageType:'reset',passengerMessage:null,entitlements:[],nextUpdateAt:null,
+  gate:F.gate,gateChanged:false,sentAt:`${F.date}T${hm(demoNow())}:00+08:00`};
+ send(obj);
+ delete published[key()];log=log.filter(l=>l.key!==key());sel={cat:null,reason:null};det={lang:det.lang||'en'};defs={};pubDone=false;
+ const p=PRESETS[F.no];if(p){F.gate=p.gate}
+ resetDemoClock();window._payload=obj;
+ toast(`${F.no} reset to ON TIME – passenger page is back to the before state.`);
+ render();$('json').textContent=JSON.stringify(obj,null,2);
+};
+
+/* ============ EVENTS ============ */
+$('fno').addEventListener('input',e=>{
+ const el=e.target,raw=el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');let v,digits='';
+ if(/^\d/.test(raw)){digits=raw.replace(/\D/g,'').slice(0,4);v='UO '+digits}
+ else if(raw.startsWith('UO')){digits=raw.slice(2).replace(/\D/g,'').slice(0,4);v=digits?'UO '+digits:'UO'}
+ else v=raw.slice(0,2);
+ el.value=v;
+ const valid=/^UO \d{2,4}$/.test(v);
+ const changed=v!==F.no;F.no=v;F.valid=valid;
+ el.classList.toggle('bad',!valid&&v.length>0);
+ $('ferr').textContent=!valid&&v.length>=3?'Enter a valid HK Express flight number (e.g. UO 870)':'';
+ if(valid&&changed){const p=PRESETS[v];if(p){Object.assign(F,{to:p.to,day:p.day,std:p.std,gate:p.gate,pax:p.pax});F.date=addDays(todayISO,p.day)}
+  sel={cat:null,reason:null};det={lang:det.lang||'en'};defs={};pubDone=false;resetDemoClock()}
+ render();
+});
+document.addEventListener('change',e=>{
+ const id=e.target.id,v=e.target.value;
+ if(id==='pRoute')F.to=v;
+ else if(id==='pDate'){F.day=+v;F.date=addDays(todayISO,+v)}
+ else if(id==='pStd'){F.std=+v;resetDemoClock()}
+ else if(id==='pGate'){F.gate=v;if(defs.gate!==undefined){defs.gate=v;det.gate=v}}
+ else if(id==='pPax')F.pax=+v;
+ else if(id==='dDelay')det.delay=(v==='TBC'||v==='CX')?v:+v;
+ else if(id==='dConf')det.conf=v;
+ else if(id==='dNext')det.next=v==='boarding'?v:+v;
+ else if(id==='dType')det.mtype=v;
+ else if(id==='dGate')det.gate=v;
+ else if(id==='dLang')det.lang=v;
+ else if(id==='dNote')det.note=+v;
+ else return;
+ if(id!=='dLang')pubDone=false;
+ render();
+});
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-cat]'),r=e.target.closest('[data-r]');
+ if(t){sel={cat:t.dataset.cat,reason:null};det={lang:det.lang||'en'};defs={};pubDone=false;render();$('cat-'+sel.cat).focus()}
+ if(r){sel.reason=r.dataset.r;prefill();pubDone=false;render();$('r-'+sel.reason).focus()}
+});
+function tick(){const n=demoNow();$('clk').textContent=hm(n)+':'+pad(demoSecs());$('clkS').textContent=`Demo time · HKT · ${DOW[new Date(addDays(F.date,Math.floor(n/1440))+'T00:00:00Z').getUTCDay()]} ${dLabel(addDays(F.date,Math.floor(n/1440)))}`}
+setInterval(tick,1000);setInterval(()=>{if(document.activeElement.tagName!=='SELECT')render()},60000);
+tick();render();
+</script>
+
+
+</body></html>
