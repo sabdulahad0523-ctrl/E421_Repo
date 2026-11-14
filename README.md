@@ -7,6 +7,16 @@
 
 Flight Status prototype (HK Express hackathon UI).
 
+## Passenger page and controller
+
+Open the passenger page at `https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/`
+and the controller at `https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/`.
+Keep both pages open in tabs in the same browser and choose a scenario in the controller;
+the passenger page updates immediately. This uses browser `localStorage` and works for
+pages on the same site origin. It does not synchronize changes to another person's browser.
+To show a specific scenario in a shareable URL, add `?scenario=ontime`, `?scenario=short`,
+`?scenario=long`, `?scenario=cancelled`, or `?scenario=diverted` to the passenger page URL.
+
 ## Run it locally with Live Server (VS Code)
 
 1. Install the **Live Server** extension (`ritwickdey.LiveServer`).
@@ -31,7 +41,10 @@ GitHub Pages link above whenever you need a link that works anywhere.
 - `index.html` – entry point used by Go Live / GitHub Pages (redirects to the UI)
 - `UI Passenger/index.html` – the flight status page
 - `UI Passenger/styles.css` – all styles for the page
-- `.nojekyll` – tells GitHub Pages to serve the files as-is (no Jekyll build)
+- `UI Controller/index.html` – separate demo controller for changing the passenger page scenario
+
+GitHub Pages can publish these ordinary HTML/CSS files without `.nojekyll`. That marker is
+mainly needed when bypassing Jekyll for files or folders whose names begin with `_`.
 
 ## Run it without VS Code
 

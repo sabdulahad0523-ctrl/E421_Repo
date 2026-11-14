@@ -35,6 +35,7 @@
 
     <!-- Prototype only: lets judges preview the green / yellow / red states -->
     <div class="scenario-bar" id="scenarioBar" role="group" aria-label="Demo scenario"></div>
+    <p class="controller-link"><a href="../UI%20Controller/index.html" target="_blank" rel="noopener">Open controller in another tab</a></p>
 
     <div class="content" id="content" aria-busy="false">
       <!-- 1. Large status card (sticky, shrinks on scroll) -->
@@ -310,7 +311,7 @@
        ========================================================= */
     const state = {
       language: 'en',
-      scenario: 'diverted',     // matches the base MOCK_DATA flight
+      scenario: new URLSearchParams(window.location.search).get('scenario') || localStorage.getItem('flightScenario') || 'diverted',
       lastUpdated: new Date(),
       isBusy: false,
       compact: false
@@ -779,6 +780,14 @@
       const btn = e.target.closest('.scenario-btn');
       if (!btn || state.isBusy) return;
       state.scenario = btn.getAttribute('data-scenario');
+      localStorage.setItem('flightScenario', state.scenario);
+      state.lastUpdated = new Date();
+      renderFlights(state.language);
+    });
+
+    window.addEventListener('storage', function (e) {
+      if (e.key !== 'flightScenario' || !SCENARIOS[e.newValue]) return;
+      state.scenario = e.newValue;
       state.lastUpdated = new Date();
       renderFlights(state.language);
     });

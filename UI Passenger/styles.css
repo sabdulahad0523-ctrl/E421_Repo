@@ -231,6 +231,14 @@
       background: var(--brand-light);
     }
 
+    .controller-link { margin: -10px 0 16px; font-size: 13px; }
+    .controller-link a, .controller-passenger-link { color: var(--brand); font-weight: 600; }
+    .controller-help { color: var(--text-muted); margin: 0 0 20px; }
+    .controller-options { display: flex; flex-wrap: wrap; gap: 10px; }
+    .controller-options .scenario-btn { padding: 10px 16px; }
+    .controller-options .scenario-btn[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--brand-light); }
+    .controller-status { margin: 20px 0; font-weight: 600; }
+
     /* =========================================================
        CONTENT WRAPPER
        min-height keeps the page scrollable so the hero can
@@ -643,6 +651,8 @@
 
       .translate-fab { right: 16px; bottom: 16px; }
       .lang-menu { width: 230px; }
+      .controller-options { flex-direction: column; align-items: stretch; }
+      .controller-options .scenario-btn { justify-content: flex-start; }
     }
 
     @media (prefers-reduced-motion: reduce) {

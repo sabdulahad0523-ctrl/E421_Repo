@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flight Status Controller</title>
+  <link rel="stylesheet" href="../UI%20Passenger/styles.css" />
+</head>
+<body>
+  <main class="controller page">
+    <p class="page-eyebrow">Demo controls</p>
+    <h1 class="page-title">Flight status controller</h1>
+    <p class="controller-help">Choose a scenario to update the passenger page in another tab in this browser.</p>
+    <div class="controller-options" role="group" aria-label="Flight status scenario">
+      <button type="button" class="scenario-btn" data-scenario="ontime">On time</button>
+      <button type="button" class="scenario-btn" data-scenario="short">Short delay</button>
+      <button type="button" class="scenario-btn" data-scenario="long">Long delay</button>
+      <button type="button" class="scenario-btn" data-scenario="cancelled">Cancelled</button>
+      <button type="button" class="scenario-btn" data-scenario="diverted">Diverted</button>
+    </div>
+    <p id="controllerStatus" class="controller-status" role="status" aria-live="polite">Current scenario: Diverted</p>
+    <a class="controller-passenger-link" href="../UI%20Passenger/index.html" target="_blank" rel="noopener">Open passenger page in another tab</a>
+  </main>
+  <script>
+    (function () {
+      'use strict';
+      var names = {
+        ontime: 'On time',
+        short: 'Short delay',
+        long: 'Long delay',
+        cancelled: 'Cancelled',
+        diverted: 'Diverted'
+      };
+      var buttons = document.querySelectorAll('[data-scenario]');
+      var status = document.getElementById('controllerStatus');
+
+      function currentScenario() {
+        var value = new URLSearchParams(window.location.search).get('scenario') || localStorage.getItem('flightScenario') || 'diverted';
+        return names[value] ? value : 'diverted';
+      }
+
+      function updateSelected() {
+        var current = currentScenario();
+        buttons.forEach(function (button) {
+          button.setAttribute('aria-pressed', button.getAttribute('data-scenario') === current ? 'true' : 'false');
+        });
+        status.textContent = 'Current scenario: ' + names[current];
+      }
+
+      buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          var scenario = button.getAttribute('data-scenario');
+          localStorage.setItem('flightScenario', scenario);
+          updateSelected();
+        });
+      });
+
+      window.addEventListener('storage', updateSelected);
+      updateSelected();
+    })();
+  </script>
+</body>
+</html>
