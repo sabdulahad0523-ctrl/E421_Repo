@@ -20,7 +20,10 @@ flight-number inputs remain independent. Changes do not synchronize to other peo
 If there is no matching published update, the passenger page falls back to its mock flight details.
 For mock scenarios, the passenger page shows demo support-choice dialogs for short delays,
 long delays, and cancellations. For controller-published updates, it shows choices only
-when the update includes entitlements; a delay with no entitlements has no popup.
+when the update includes entitlements; a delay with no entitlements has no popup. The demo
+controller publishes four illustrative choices for delays of at least one hour and for
+cancellations. Use **Reset flight to on time** in the controller's update log to replace a
+saved disruption update.
 Controller updates appear on the passenger page only after the passenger presses
 **Refresh Status**. Delayed flights also show a delay-amount meter in the disruption reason card.
 
