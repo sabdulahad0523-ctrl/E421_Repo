@@ -1,8 +1,8 @@
 # E421_Repo
 
-> ▶ **Passenger UI:** [Open the live passenger page](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/)
+> ▶ **Passenger UI:** [Open the live passenger page](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/index.html)
 >
-> **IOC Controller:** [Open the live controller](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/)
+> **IOC Controller:** [Open the live controller](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/index.html)
 >
 > Opens in any browser on any computer or phone — no clone, no install, no `git pull` needed.
 > The site rebuilds automatically (~1 minute) after every push to `main`.
@@ -11,16 +11,16 @@ Flight Status prototype (HK Express hackathon UI).
 
 ## Passenger page and controller
 
-Open [the passenger page](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/)
-and [the IOC controller](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/).
+Open [the passenger page](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/index.html)
+and [the IOC controller](https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/index.html).
 Keep both pages open in tabs in the same browser. The controller publishes flight updates
 to same-origin `localStorage`; on **Refresh Status**, the passenger page applies the newest
 published update only when its entered flight number matches. The controller and passenger
 flight-number inputs remain independent. Changes do not synchronize to other people's browsers.
 If there is no matching published update, the passenger page falls back to its mock flight details.
-The passenger page also shows demo support-choice dialogs for short delays, long delays,
-and cancellations. These options are illustrative only, not confirmed airline benefits;
-diverted flights do not show the choice dialog.
+For mock scenarios, the passenger page shows demo support-choice dialogs for short delays,
+long delays, and cancellations. For controller-published updates, it shows choices only
+when the update includes entitlements; a delay with no entitlements has no popup.
 Controller updates appear on the passenger page only after the passenger presses
 **Refresh Status**. Delayed flights also show a delay-amount meter in the disruption reason card.
 
@@ -31,9 +31,9 @@ Controller updates appear on the passenger page only after the passenger presses
 3. Click **Go Live** in the status bar (or right-click `index.html` → **Open with Live Server**).
 
 The browser opens `http://127.0.0.1:5500/`, which redirects to the passenger page at
-[`http://127.0.0.1:5500/UI%20Passenger/`](http://127.0.0.1:5500/UI%20Passenger/).
+[`http://127.0.0.1:5500/UI%20Passenger/index.html`](http://127.0.0.1:5500/UI%20Passenger/index.html).
 Open the controller in a second tab at
-[`http://127.0.0.1:5500/UI%20Controller/`](http://127.0.0.1:5500/UI%20Controller/).
+[`http://127.0.0.1:5500/UI%20Controller/index.html`](http://127.0.0.1:5500/UI%20Controller/index.html).
 Any save in VS Code auto-reloads the pages.
 
 ### View the local server from another computer (same Wi-Fi)

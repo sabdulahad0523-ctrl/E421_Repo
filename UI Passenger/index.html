@@ -217,6 +217,13 @@
         compCancelled2: 'Request a refund',
         compCancelled3: 'Travel voucher',
         compCancelled4: 'Hotel and ground transport if an overnight stay is needed',
+        compEntAsiaMiles: '500 Asia Miles',
+        compEntMealVoucher: 'HK$80 meal voucher',
+        compEntFreeChange: 'Free flight change',
+        compEntRebooking: 'Free rebooking',
+        compEntRefund: 'Full refund option',
+        compEntHotel: 'Hotel stay',
+        compPublishedDisclaimer: 'Options are based on the controller’s published demo policy result and are not a confirmed airline offer.',
         cityHKG: 'Hong Kong',
         cityNGB: 'Ningbo'
       },
@@ -289,6 +296,13 @@
         compCancelled2: '申請退款',
         compCancelled3: '旅遊券',
         compCancelled4: '如需過夜，安排酒店及地面交通',
+        compEntAsiaMiles: '500 亞洲萬里通里數',
+        compEntMealVoucher: 'HK$80 餐飲券',
+        compEntFreeChange: '免費更改航班',
+        compEntRebooking: '免費改乘',
+        compEntRefund: '全額退款選項',
+        compEntHotel: '酒店住宿',
+        compPublishedDisclaimer: '選項根據控制台發布的示範政策結果顯示，並非航空公司的確認安排。',
         cityHKG: '香港',
         cityNGB: '寧波'
       },
@@ -361,6 +375,13 @@
         compCancelled2: '払い戻しを申請',
         compCancelled3: '旅行クーポン',
         compCancelled4: '宿泊が必要な場合のホテルと地上交通',
+        compEntAsiaMiles: '500アジア・マイル',
+        compEntMealVoucher: 'HK$80のお食事券',
+        compEntFreeChange: '無料の便変更',
+        compEntRebooking: '無料振替',
+        compEntRefund: '全額返金オプション',
+        compEntHotel: 'ホテル宿泊',
+        compPublishedDisclaimer: 'コントローラーが公開したデモポリシーに基づく選択肢であり、航空会社が確約したものではありません。',
         cityHKG: '香港',
         cityNGB: '寧波'
       }
@@ -610,6 +631,7 @@
           status: update.status === 'cancelled' ? 'cancelled' : update.status === 'delayed' ? 'delayed' : 'scheduled',
           statusColour: update.statusColour,
           delayMinutes: delay,
+          controllerEntitlements: Array.isArray(update.entitlements) ? update.entitlements : [],
           reasonKey: reasonKey,
           controllerMessage: controllerMessage || ''
         };
@@ -635,23 +657,36 @@
     }
 
     function updateCompensationPrompt(f) {
-      const optionKeys = {
+      const entitlementKeys = {
+        asia_miles_500: 'compEntAsiaMiles',
+        meal_voucher_80: 'compEntMealVoucher',
+        free_change: 'compEntFreeChange',
+        rebooking: 'compEntRebooking',
+        refund: 'compEntRefund',
+        hotel: 'compEntHotel'
+      };
+      const demoOptionKeys = {
         short: ['compShort1', 'compShort2'],
         long: ['compLong1', 'compLong2', 'compLong3', 'compLong4'],
         cancelled: ['compCancelled1', 'compCancelled2', 'compCancelled3', 'compCancelled4']
-      }[f.reasonKey] || [];
+      };
+      const hasPublishedEntitlements = Array.isArray(f.controllerEntitlements);
+      const optionKeys = hasPublishedEntitlements
+        ? f.controllerEntitlements.map(function (key) { return entitlementKeys[key]; }).filter(Boolean)
+        : (demoOptionKeys[f.reasonKey] || []);
+      const promptKey = [f.flightNo, f.reasonKey, optionKeys.join(',')].join(':');
 
       if (!optionKeys.length) {
-        lastCompensationReason = f.reasonKey;
+        lastCompensationReason = promptKey;
         if (els.compensationDialog.open) els.compensationDialog.close();
         return;
       }
 
-      if (lastCompensationReason === f.reasonKey) return;
-      lastCompensationReason = f.reasonKey;
+      if (lastCompensationReason === promptKey) return;
+      lastCompensationReason = promptKey;
       els.compensationTitle.textContent = t('compTitle');
       els.compensationIntro.textContent = t('compIntro');
-      els.compensationDisclaimer.textContent = t('compDisclaimer');
+      els.compensationDisclaimer.textContent = t(hasPublishedEntitlements ? 'compPublishedDisclaimer' : 'compDisclaimer');
       els.compensationSubmit.textContent = t('compSubmit');
       els.compensationClose.setAttribute('aria-label', t('compClose'));
       els.compensationOptions.innerHTML = optionKeys.map(function (key, index) {
