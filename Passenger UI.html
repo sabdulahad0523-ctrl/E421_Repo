@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flight Status | HK Express (Hackathon Prototype)</title>
+  <style>
+    /* =========================================================
+       DESIGN TOKENS (CSS variables)
+       ========================================================= */
+    :root {
+      --brand: #6b2fa0;
+      --brand-dark: #55237f;
+      --brand-light: #f3ecfa;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --border: #e6e6eb;
+      --status-alert: #d93873;
+      --status-box-bg: #f2f2f5;
+      --text: #222230;
+      --text-muted: #6c6c7a;
+
+      /* Severity colours (hero card) */
+      --sev-green: #1f9d55;
+      --sev-green-2: #167a42;
+      --sev-yellow: #f6c22b;
+      --sev-yellow-2: #eba600;
+      --sev-yellow-text: #3b2c00;
+      --sev-yellow-ink: #a87600;   /* readable yellow-ish text on white */
+      --sev-red: #e2457f;
+      --sev-red-2: #c42b63;
+
+      --radius: 8px;
+      --radius-lg: 16px;
+      --radius-pill: 999px;
+      --shadow-sm: 0 1px 2px rgba(20, 20, 40, 0.04);
+      --shadow-md: 0 8px 24px rgba(40, 20, 70, 0.16);
+      --shadow-hero: 0 10px 30px rgba(30, 20, 50, 0.18);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+              Arial, "Noto Sans TC", "Noto Sans JP", "PingFang TC", "Hiragino Sans", sans-serif;
+      --header-h: 0px;
+      --transition: 180ms ease;
+      --shrink: 260ms cubic-bezier(.2, .7, .2, 1);
+    }
+
+    /* =========================================================
+       BASE
+       ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font-family: inherit; cursor: pointer; }
+    a { color: inherit; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+
+    /* =========================================================
+       HEADER
+       ========================================================= */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: var(--header-h);
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      max-width: 1180px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      text-decoration: none;
+      color: var(--brand);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      user-select: none;
+    }
+    .logo-hk { font-size: 26px; font-style: italic; }
+    .logo-express { font-size: 22px; font-weight: 700; font-style: italic; }
+    .logo-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--status-alert);
+      display: inline-block;
+      margin-left: 2px;
+      transform: translateY(-2px);
+    }
+
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .fake-dropdown {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      font-size: 14px;
+      color: var(--text);
+      transition: background var(--transition);
+    }
+    .fake-dropdown:hover { background: var(--brand-light); }
+    .fake-dropdown svg { width: 12px; height: 12px; color: var(--text-muted); }
+
+    .header-divider { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+    .signin-link {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--brand);
+      text-decoration: none;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+    }
+    .signin-link:hover { background: var(--brand-light); }
+
+    .btn-refresh {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-pill);
+      padding: 9px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background var(--transition), opacity var(--transition);
+    }
+    .btn-refresh:hover { background: var(--brand-dark); }
+    .btn-refresh:disabled { opacity: 0.7; cursor: progress; }
+    .page-meta .btn-refresh { margin-left: auto; }
+    .btn-refresh svg { width: 16px; height: 16px; }
+    .btn-refresh.is-loading svg { animation: spin 0.8s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* =========================================================
+       MAIN / PAGE TITLE
+       ========================================================= */
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 120px;
+    }
+
+    .page-eyebrow {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--brand);
+      margin: 0 0 6px;
+    }
+
+    .page-title { font-size: 28px; font-weight: 700; margin: 0 0 6px; }
+
+    .page-meta {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin: 0 0 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      align-items: center;
+    }
+
+    .translated-chip {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--brand);
+      background: var(--brand-light);
+      border-radius: var(--radius-pill);
+      padding: 3px 10px;
+    }
+    .translated-chip.is-visible { display: inline-flex; }
+    .translated-chip svg { width: 13px; height: 13px; }
+
+    /* Demo scenario switcher (prototype only) */
+    .scenario-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 20px;
+      font-size: 13px;
+    }
+    .scenario-label { color: var(--text-muted); font-weight: 600; margin-right: 4px; }
+    .scenario-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: var(--radius-pill);
+      padding: 5px 12px;
+      font-size: 13px;
+      color: var(--text);
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .scenario-btn:hover { background: var(--brand-light); }
+    .scenario-btn .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .scenario-btn .dot.green { background: var(--sev-green); }
+    .scenario-btn .dot.yellow { background: var(--sev-yellow-2); }
+    .scenario-btn .dot.red { background: var(--sev-red-2); }
+    .scenario-btn[aria-pressed="true"] {
+      border-color: var(--brand);
+      color: var(--brand);
+      font-weight: 700;
+      background: var(--brand-light);
+    }
+
+    /* =========================================================
+       CONTENT WRAPPER
+       min-height keeps the page scrollable so the hero can
+       shrink without the layout "bouncing".
+       ========================================================= */
+    .content {
+      min-height: calc(100vh - var(--header-h) + 220px);
+      transition: opacity var(--transition);
+    }
+    .content.is-loading { opacity: 0.5; pointer-events: none; }
+    .content.is-loading .flight-card,
+    .content.is-loading .reason-card { position: relative; overflow: hidden; }
+    .content.is-loading .flight-card::after,
+    .content.is-loading .reason-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 1s infinite;
+    }
+    @keyframes shimmer { to { transform: translateX(100%); } }
+
+    /* =========================================================
+       HERO STATUS CARD (sticky, shrinks on scroll)
+       ========================================================= */
+    .hero {
+      position: sticky;
+      top: calc(var(--header-h) + 12px);
+      z-index: 20;
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      margin-bottom: 16px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--sev-red), var(--sev-red-2));
+      box-shadow: var(--shadow-hero);
+      transition: padding var(--shrink), border-radius var(--shrink), background var(--shrink);
+    }
+    .hero.sev-green { background: linear-gradient(135deg, var(--sev-green), var(--sev-green-2)); }
+    .hero.sev-yellow { background: linear-gradient(135deg, var(--sev-yellow), var(--sev-yellow-2)); color: var(--sev-yellow-text); }
+    .hero.sev-red { background: linear-gradient(135deg, var(--sev-red), var(--sev-red-2)); }
+
+    .hero-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .hero-left { min-width: 0; }
+
+    .hero-flight {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0.92;
+      transition: font-size var(--shrink);
+    }
+    .hero-flight .fno { font-weight: 800; }
+
+    .hero-headline {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 6px;
+      transition: gap var(--shrink);
+    }
+    .hero-status {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.5px;
+      transition: font-size var(--shrink);
+    }
+    .hero-sub {
+      font-size: 17px;
+      font-weight: 600;
+      opacity: 0.95;
+      transition: font-size var(--shrink);
+    }
+
+    .hero-icon {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      transition: width var(--shrink), height var(--shrink);
+    }
+    .hero.sev-yellow .hero-icon { background: rgba(59, 44, 0, 0.12); }
+    .hero-icon svg { width: 46px; height: 46px; transition: width var(--shrink), height var(--shrink); }
+
+    .hero-times {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.35);
+      max-height: 220px;
+      overflow: hidden;
+      opacity: 1;
+      transition: max-height var(--shrink), opacity 200ms ease, margin var(--shrink), padding var(--shrink);
+    }
+    .hero.sev-yellow .hero-times { border-top-color: rgba(59, 44, 0, 0.2); }
+
+    .ht-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      opacity: 0.85;
+    }
+    .ht-time {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .ht-was { font-size: 13px; opacity: 0.85; min-height: 18px; }
+    .ht-code { font-size: 14px; font-weight: 700; margin-top: 2px; }
+    .ht-arr { text-align: right; }
+
+    .ht-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 180px;
+    }
+    .ht-line svg.icon { width: 22px; height: 22px; flex-shrink: 0; }
+    .ht-line .dotted { flex: 1; height: 6px; }
+
+    /* Compact (scrolled) state */
+    .hero.is-compact { padding: 12px 20px; border-radius: 12px; }
+    .hero.is-compact .hero-flight { font-size: 12px; }
+    .hero.is-compact .hero-headline { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; }
+    .hero.is-compact .hero-status { font-size: 24px; }
+    .hero.is-compact .hero-sub { font-size: 13px; }
+    .hero.is-compact .hero-icon { width: 40px; height: 40px; }
+    .hero.is-compact .hero-icon svg { width: 22px; height: 22px; }
+    .hero.is-compact .hero-times {
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+      padding-top: 0;
+      border-top-width: 0;
+    }
+
+    /* =========================================================
+       REASON CARD (shown first, directly below the hero)
+       ========================================================= */
+    .reason-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--sev-red-2);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 18px 22px;
+      margin-bottom: 28px;
+    }
+    .reason-card.sev-green { border-left-color: var(--sev-green); }
+    .reason-card.sev-yellow { border-left-color: var(--sev-yellow-2); }
+    .reason-card.sev-red { border-left-color: var(--sev-red-2); }
+
+    .reason-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .reason-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .reason-text { font-size: 21px; font-weight: 700; margin: 0 0 6px; }
+    .reason-detail { font-size: 15px; margin: 0 0 10px; }
+    .reason-source { font-size: 12px; color: var(--text-muted); }
+
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: var(--brand);
+      background: var(--brand-light);
+      border: 1px solid rgba(107, 47, 160, 0.18);
+      border-radius: var(--radius-pill);
+      padding: 3px 9px;
+      white-space: nowrap;
+    }
+
+    /* =========================================================
+       FLIGHT DETAILS CARD
+       ========================================================= */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin: 0 0 10px;
+    }
+
+    .flight-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .flight-no { font-size: 15px; font-weight: 700; color: var(--brand); }
+    .flight-no span { color: var(--text-muted); font-weight: 500; margin-right: 6px; }
+
+    .card-grid { display: grid; grid-template-columns: 1.35fr 1fr 1fr; }
+    .col { padding: 18px 20px; min-width: 0; }
+    .col + .col { border-left: 1px solid var(--border); }
+
+    .col-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+
+    .field {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      padding: 4px 0;
+      font-size: 14px;
+    }
+    .field-label { color: var(--text-muted); }
+    .field-value { font-weight: 600; text-align: right; }
+    .field-value.time { font-size: 16px; font-variant-numeric: tabular-nums; }
+    .field-value.is-late { color: var(--status-alert); }
+    .field-value.is-early { color: var(--sev-green); }
+    .delta { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+    .airport-code { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .route-visual { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; color: var(--brand); }
+    .route-visual svg.icon { width: 22px; height: 22px; flex-shrink: 0; }
+    .route-visual .dotted { flex: 1; height: 6px; min-width: 40px; }
+    .route-codes { display: flex; justify-content: space-between; font-weight: 800; font-size: 18px; letter-spacing: 0.5px; }
+    .route-cities { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+
+    .status-box {
+      background: var(--status-box-bg);
+      border-radius: var(--radius);
+      min-height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 16px;
+    }
+    .status-text { font-size: 28px; font-weight: 800; line-height: 1.15; word-break: keep-all; }
+    .status-text.sev-red { color: var(--status-alert); }
+    .status-text.sev-yellow { color: var(--sev-yellow-ink); }
+    .status-text.sev-green { color: var(--sev-green); }
+
+    /* =========================================================
+       FLOATING TRANSLATION BUBBLE
+       ========================================================= */
+    .translate-fab { position: fixed; right: 24px; bottom: 24px; z-index: 100; }
+
+    .fab-btn {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: none;
+      background: var(--brand);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      box-shadow: var(--shadow-md);
+      transition: transform var(--transition), background var(--transition);
+    }
+    .fab-btn:hover { background: var(--brand-dark); transform: scale(1.05); }
+    .fab-btn:focus-visible { outline: 3px solid rgba(107, 47, 160, 0.35); outline-offset: 3px; }
+    .fab-btn svg { width: 28px; height: 28px; }
+    .fab-btn.is-busy svg { animation: spin 0.9s linear infinite; }
+
+    .lang-menu {
+      position: absolute;
+      right: 0;
+      bottom: 72px;
+      width: 250px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      padding: 10px;
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+      transform-origin: bottom right;
+      pointer-events: none;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    .lang-menu.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .lang-menu-head { padding: 6px 8px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    .lang-menu-title { font-size: 14px; font-weight: 700; margin: 0; }
+    .lang-menu-sub { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
+
+    .lang-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px;
+      font-size: 14px;
+      color: var(--text);
+      text-align: left;
+      transition: background var(--transition);
+    }
+    .lang-option:hover, .lang-option:focus-visible { background: var(--brand-light); outline: none; }
+    .lang-option small { color: var(--text-muted); font-size: 12px; margin-left: 6px; }
+    .lang-option .check { width: 16px; height: 16px; color: var(--brand); visibility: hidden; }
+    .lang-option[aria-checked="true"] { font-weight: 700; color: var(--brand); }
+    .lang-option[aria-checked="true"] .check { visibility: visible; }
+
+    /* =========================================================
+       TOAST
+       ========================================================= */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translate(-50%, 20px);
+      background: #2a2238;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition), transform var(--transition);
+      z-index: 200;
+      max-width: calc(100% - 120px);
+      text-align: center;
+    }
+    .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+    @media (max-width: 960px) {
+      .card-grid { grid-template-columns: 1fr 1fr; }
+      .col:first-child { grid-column: 1 / -1; }
+      .col:nth-child(2) { border-left: none; }
+      .col:nth-child(n+2) { border-top: 1px solid var(--border); }
+      .ht-line { width: 110px; }
+    }
+
+    @media (max-width: 640px) {
+      .header-inner { padding: 0 14px; }
+      .fake-dropdown.currency, .header-divider { display: none; }
+      .fake-dropdown { padding: 6px; font-size: 13px; }
+      .signin-link { padding: 6px; font-size: 13px; }
+      .btn-refresh .btn-label { display: none; }
+      .btn-refresh { padding: 9px; }
+      .logo-hk { font-size: 22px; }
+      .logo-express { font-size: 18px; }
+
+      .page { padding: 22px 14px 120px; }
+      .page-title { font-size: 22px; }
+
+      .hero { padding: 20px; top: calc(var(--header-h) + 8px); }
+      .hero-status { font-size: 40px; }
+      .hero-icon { width: 60px; height: 60px; }
+      .hero-icon svg { width: 32px; height: 32px; }
+      .ht-time { font-size: 26px; }
+      .ht-line { width: 56px; }
+      .ht-line svg.icon { display: none; }
+      .hero.is-compact { padding: 10px 14px; }
+      .hero.is-compact .hero-status { font-size: 20px; }
+      .hero.is-compact .hero-icon { width: 34px; height: 34px; }
+      .hero.is-compact .hero-icon svg { width: 18px; height: 18px; }
+
+      .card-grid { grid-template-columns: 1fr; }
+      .col + .col { border-left: none; border-top: 1px solid var(--border); }
+      .status-box { min-height: 80px; }
+      .status-text { font-size: 24px; }
+
+      .translate-fab { right: 16px; bottom: 16px; }
+      .lang-menu { width: 230px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================
+       MAIN CONTENT
+       ========================================================= -->
+  <main class="page">
+    <p class="page-eyebrow" id="pageEyebrow">Flight Status</p>
+    <h1 class="page-title" id="pageTitle">Hong Kong (HKG) To Ningbo (NGB)</h1>
+    <p class="page-meta">
+      <span id="lastUpdated"></span>
+      <span class="translated-chip" id="translatedChip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+        </svg>
+        <span id="translatedChipText"></span>
+      </span>
+      <button class="btn-refresh" type="button" id="refreshBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+          <path d="M21 4v5h-5"/>
+        </svg>
+        <span class="btn-label" id="refreshLabel">Refresh Status</span>
+      </button>
+    </p>
+
+    <!-- Prototype only: lets judges preview the green / yellow / red states -->
+    <div class="scenario-bar" id="scenarioBar" role="group" aria-label="Demo scenario"></div>
+
+    <div class="content" id="content" aria-busy="false">
+      <!-- 1. Large status card (sticky, shrinks on scroll) -->
+      <section class="hero" id="hero" aria-live="polite"></section>
+
+      <!-- 2. Reason for delay / cancellation (always shown first) -->
+      <section class="reason-card" id="reasonCard"></section>
+
+      <!-- 3. Everything else -->
+      <h2 class="section-title" id="detailsTitle">Flight details</h2>
+      <section id="flightsContainer"></section>
+    </div>
+  </main>
+
+  <!-- =========================================================
+       FLOATING TRANSLATION BUBBLE
+       ========================================================= -->
+  <div class="translate-fab" id="translateFab">
+    <div class="lang-menu" id="langMenu" role="menu" aria-labelledby="fabBtn">
+      <div class="lang-menu-head">
+        <p class="lang-menu-title" id="langMenuTitle">Translate flight info</p>
+        <p class="lang-menu-sub">Powered by Google Cloud Translation</p>
+      </div>
+      <button class="lang-option" type="button" role="menuitemradio" data-lang="en" aria-checked="true">
+        <span>English <small>EN</small></span>
+        <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
+      </button>
+      <button class="lang-option" type="button" role="menuitemradio" data-lang="zh-TW" aria-checked="false">
+        <span>繁體中文 <small>Traditional Chinese</small></span>
+        <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
+      </button>
+      <button class="lang-option" type="button" role="menuitemradio" data-lang="ja" aria-checked="false">
+        <span>日本語 <small>Japanese</small></span>
+        <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
+      </button>
+    </div>
+
+    <button class="fab-btn" id="fabBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="langMenu" title="Translate">
+      <span class="sr-only">Translate flight information</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18"/>
+        <path d="M12 3a14 14 0 0 1 0 18"/>
+        <path d="M12 3a14 14 0 0 0 0 18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* =========================================================
+       CONFIG
+       Delay thresholds (minutes) that decide the hero colour:
+         <= ON_TIME          -> green  (on time)
+         <= LONG_DELAY       -> yellow (short delay)
+         >  LONG_DELAY       -> red    (long delay)
+         cancelled/diverted  -> red
+       ========================================================= */
+    const THRESHOLDS = { ON_TIME: 15, LONG_DELAY: 60 };
+
+    /* =========================================================
+       MOCK DATA (single flight)
+       TODO: Replace with a real call to the HK Express / Cathay
+       flight status API, e.g. GET /api/flight-status?flight=UO612&date=...
+       ========================================================= */
+    const MOCK_DATA = [
+      {
+        id: 'f1',
+        flightNo: 'UO612',
+        origin: { code: 'HKG', cityKey: 'cityHKG' },
+        destination: { code: 'NGB', cityKey: 'cityNGB' },
+        departure: { date: '2026-11-14', scheduled: '13:25', time: '13:36', timeType: 'actual' },
+        arrival:   { date: '2026-11-14', scheduled: '16:45', time: '16:42', timeType: 'actual' },
+        status: 'diverted',
+        // NOTE: In production the reason/insight is generated by Google Cloud Vertex AI
+        // (e.g. a Gemini model summarising ops, weather and ATC feeds for this flight).
+        reasonKey: 'diverted'
+      }
+    ];
+
+    /* Prototype-only overrides so the three colour states can be demoed. */
+    const SCENARIOS = {
+      ontime:    { dot: 'green',  status: 'scheduled', dep: { time: '13:25', timeType: 'estimated' }, arr: { time: '16:40', timeType: 'estimated' }, reasonKey: 'ontime' },
+      short:     { dot: 'yellow', status: 'delayed',   dep: { time: '13:50', timeType: 'estimated' }, arr: { time: '17:08', timeType: 'estimated' }, reasonKey: 'short' },
+      long:      { dot: 'red',    status: 'delayed',   dep: { time: '15:10', timeType: 'estimated' }, arr: { time: '18:25', timeType: 'estimated' }, reasonKey: 'long' },
+      cancelled: { dot: 'red',    status: 'cancelled', dep: { time: null,    timeType: 'estimated' }, arr: { time: null,    timeType: 'estimated' }, reasonKey: 'cancelled' },
+      diverted:  { dot: 'red',    status: 'diverted',  dep: { time: '13:36', timeType: 'actual' },    arr: { time: '16:42', timeType: 'actual' },    reasonKey: 'diverted' }
+    };
+    const SCENARIO_ORDER = ['ontime', 'short', 'long', 'cancelled', 'diverted'];
+
+    /* =========================================================
+       TRANSLATIONS
+       In production these strings would come back from the
+       Google Cloud Translation API; here they are pre-baked.
+       ========================================================= */
+    const TRANSLATIONS = {
+      en: {
+        locale: 'en-GB',
+        langName: 'English',
+        eyebrow: 'Flight Status',
+        routeTitle: '{from} ({fromCode}) To {to} ({toCode})',
+        lastUpdated: 'Last updated {time}',
+        refresh: 'Refresh Status',
+        refreshing: 'Refreshing…',
+        refreshed: 'Flight status refreshed',
+        menuTitle: 'Translate flight info',
+        translating: 'Translating with Google Cloud AI…',
+        translatedTo: 'Translated to {lang}',
+        translatedChip: 'Translated by Google Cloud AI',
+        demoLabel: 'Demo scenario:',
+        scn_ontime: 'On time',
+        scn_short: 'Short delay',
+        scn_long: 'Long delay',
+        scn_cancelled: 'Cancelled',
+        scn_diverted: 'Diverted',
+        flight: 'Flight',
+        flightDetails: 'Flight details',
+        routeSchedule: 'Route & Schedule',
+        departure: 'Departure',
+        arrival: 'Arrival',
+        status: 'Status',
+        date: 'Date',
+        scheduled: 'Scheduled',
+        actual: 'Actual',
+        estimated: 'Estimated',
+        airport: 'Airport',
+        was: 'Was {time}',
+        min: 'min',
+        aiBadge: 'AI Insight',
+        aiSource: 'Generated by Vertex AI (mock)',
+        reasonTitleIssue: 'Reason for disruption',
+        reasonTitleOk: 'Flight update',
+        statusDiverted: 'Diverted',
+        statusDelayed: 'Delayed',
+        statusOnTime: 'On Time',
+        statusCancelled: 'Cancelled',
+        sev_green: 'Operating as scheduled',
+        sev_yellow: 'Short delay',
+        sev_red: 'Major disruption',
+        reason_ontime: 'No disruption expected.',
+        detail_ontime: 'Your flight is operating normally. Check-in closes 60 minutes before departure.',
+        reason_short: 'Minor air traffic congestion at HKG.',
+        detail_short: 'Departure is running a little late. Boarding will start later than scheduled.',
+        reason_long: 'Typhoon warning in effect in Hong Kong.',
+        detail_long: 'Departure is delayed by more than an hour. You can change your flight free of charge in Manage Booking.',
+        reason_cancelled: 'Cancelled due to typhoon.',
+        detail_cancelled: 'We are sorry for the inconvenience. You can rebook or request a refund in Manage Booking.',
+        reason_diverted: 'Rerouted due to weather.',
+        detail_diverted: 'Heavy rain at Ningbo. The flight is landing at an alternate airport and ground transport will be arranged.',
+        cityHKG: 'Hong Kong',
+        cityNGB: 'Ningbo'
+      },
+      'zh-TW': {
+        locale: 'zh-TW',
+        langName: '繁體中文',
+        eyebrow: '航班狀態',
+        routeTitle: '{from} ({fromCode}) 至 {to} ({toCode})',
+        lastUpdated: '最後更新 {time}',
+        refresh: '更新狀態',
+        refreshing: '更新中…',
+        refreshed: '航班狀態已更新',
+        menuTitle: '翻譯航班資訊',
+        translating: '正在使用 Google Cloud AI 翻譯…',
+        translatedTo: '已翻譯為{lang}',
+        translatedChip: '由 Google Cloud AI 翻譯',
+        demoLabel: '示範情境：',
+        scn_ontime: '準時',
+        scn_short: '短暫延誤',
+        scn_long: '長時間延誤',
+        scn_cancelled: '取消',
+        scn_diverted: '改航',
+        flight: '航班',
+        flightDetails: '航班詳情',
+        routeSchedule: '航線及時間表',
+        departure: '出發',
+        arrival: '抵達',
+        status: '狀態',
+        date: '日期',
+        scheduled: '預定時間',
+        actual: '實際時間',
+        estimated: '預計時間',
+        airport: '機場',
+        was: '原定 {time}',
+        min: '分鐘',
+        aiBadge: 'AI 分析',
+        aiSource: '由 Vertex AI 生成（模擬）',
+        reasonTitleIssue: '受阻原因',
+        reasonTitleOk: '航班最新消息',
+        statusDiverted: '改航',
+        statusDelayed: '延誤',
+        statusOnTime: '準時',
+        statusCancelled: '取消',
+        sev_green: '按時運作',
+        sev_yellow: '短暫延誤',
+        sev_red: '嚴重受阻',
+        reason_ontime: '預計不會受阻。',
+        detail_ontime: '航班正常運作。登機手續於起飛前 60 分鐘截止。',
+        reason_short: '香港國際機場空中交通輕微擠塞。',
+        detail_short: '起飛時間稍為延遲，登機時間將相應延後。',
+        reason_long: '香港正生效颱風警告。',
+        detail_long: '起飛延誤超過一小時。您可透過「管理預訂」免費更改航班。',
+        reason_cancelled: '因颱風取消。',
+        detail_cancelled: '很抱歉為您帶來不便。您可透過「管理預訂」改期或申請退款。',
+        reason_diverted: '因天氣原因改道。',
+        detail_diverted: '寧波大雨，航班將降落於備降機場，並會安排地面交通。',
+        cityHKG: '香港',
+        cityNGB: '寧波'
+      },
+      ja: {
+        locale: 'ja-JP',
+        langName: '日本語',
+        eyebrow: '運航状況',
+        routeTitle: '{from} ({fromCode}) 発 {to} ({toCode}) 行き',
+        lastUpdated: '最終更新 {time}',
+        refresh: '状況を更新',
+        refreshing: '更新中…',
+        refreshed: '運航状況を更新しました',
+        menuTitle: 'フライト情報を翻訳',
+        translating: 'Google Cloud AI で翻訳中…',
+        translatedTo: '{lang}に翻訳しました',
+        translatedChip: 'Google Cloud AI による翻訳',
+        demoLabel: 'デモシナリオ：',
+        scn_ontime: '定刻',
+        scn_short: '小幅な遅延',
+        scn_long: '大幅な遅延',
+        scn_cancelled: '欠航',
+        scn_diverted: '目的地変更',
+        flight: '便名',
+        flightDetails: 'フライト詳細',
+        routeSchedule: '路線とスケジュール',
+        departure: '出発',
+        arrival: '到着',
+        status: '運航状況',
+        date: '日付',
+        scheduled: '定刻',
+        actual: '実際',
+        estimated: '見込み',
+        airport: '空港',
+        was: '当初 {time}',
+        min: '分',
+        aiBadge: 'AI インサイト',
+        aiSource: 'Vertex AI により生成（モック）',
+        reasonTitleIssue: '運航への影響の理由',
+        reasonTitleOk: 'フライト情報',
+        statusDiverted: '目的地変更',
+        statusDelayed: '遅延',
+        statusOnTime: '定刻',
+        statusCancelled: '欠航',
+        sev_green: '定刻通り運航',
+        sev_yellow: '小幅な遅れ',
+        sev_red: '大幅な乱れ',
+        reason_ontime: '遅延の見込みはありません。',
+        detail_ontime: '通常通り運航しています。チェックインは出発の60分前に締め切ります。',
+        reason_short: '香港国際空港で軽度の航空交通混雑。',
+        detail_short: '出発が少し遅れています。搭乗開始も予定より遅くなります。',
+        reason_long: '香港で台風警報が発令中です。',
+        detail_long: '出発が1時間以上遅れます。「予約管理」から無料で便を変更できます。',
+        reason_cancelled: '台風のため欠航となりました。',
+        detail_cancelled: 'ご迷惑をおかけし申し訳ございません。「予約管理」から振替または払い戻しが可能です。',
+        reason_diverted: '悪天候のため経路を変更しました。',
+        detail_diverted: '寧波の大雨により代替空港に着陸します。地上交通を手配いたします。',
+        cityHKG: '香港',
+        cityNGB: '寧波'
+      }
+    };
+
+    /* =========================================================
+       STATE
+       ========================================================= */
+    const state = {
+      language: 'en',
+      scenario: 'diverted',     // matches the base MOCK_DATA flight
+      lastUpdated: new Date(),
+      isBusy: false,
+      compact: false
+    };
+
+    /* =========================================================
+       DOM REFERENCES
+       ========================================================= */
+    const els = {
+      content: document.getElementById('content'),
+      hero: document.getElementById('hero'),
+      reasonCard: document.getElementById('reasonCard'),
+      detailsTitle: document.getElementById('detailsTitle'),
+      container: document.getElementById('flightsContainer'),
+      scenarioBar: document.getElementById('scenarioBar'),
+      pageTitle: document.getElementById('pageTitle'),
+      pageEyebrow: document.getElementById('pageEyebrow'),
+      lastUpdated: document.getElementById('lastUpdated'),
+      translatedChip: document.getElementById('translatedChip'),
+      translatedChipText: document.getElementById('translatedChipText'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      refreshLabel: document.getElementById('refreshLabel'),
+      fab: document.getElementById('translateFab'),
+      fabBtn: document.getElementById('fabBtn'),
+      langMenu: document.getElementById('langMenu'),
+      langMenuTitle: document.getElementById('langMenuTitle'),
+      langOptions: document.querySelectorAll('.lang-option'),
+      toast: document.getElementById('toast')
+    };
+
+    /* =========================================================
+       ICONS (inline SVG strings)
+       ========================================================= */
+    const ICONS = {
+      plane:
+        '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+        '<path d="M21.5 15.5v-1.8l-8-5V3.2c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v5.5l-8 5v1.8l8-2.5v5.3L8.5 19.8v1.5l3.5-1 3.5 1v-1.5l-2-1.5V13l8 2.5z" transform="rotate(90 12 12)"/>' +
+        '</svg>',
+      dotted:
+        '<svg class="dotted" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">' +
+        '<line x1="2" y1="3" x2="98" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="1 6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+        '</svg>',
+      pin:
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/>' +
+        '<circle cx="12" cy="9.5" r="2.5"/>' +
+        '</svg>',
+      check:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>',
+      clock:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+      alert:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.8 19.5h18.4L12 3.5z"/><path d="M12 10v4.5"/><path d="M12 17.3v.2"/></svg>'
+    };
+    const SEVERITY_ICON = { green: 'check', yellow: 'clock', red: 'alert' };
+
+    /* =========================================================
+       HELPERS
+       ========================================================= */
+    function t(key) {
+      const dict = TRANSLATIONS[state.language] || TRANSLATIONS.en;
+      return dict[key] !== undefined ? dict[key] : (TRANSLATIONS.en[key] !== undefined ? TRANSLATIONS.en[key] : key);
+    }
+
+    function fill(template, values) {
+      return String(template).replace(/\{(\w+)\}/g, function (_, k) {
+        return values[k] !== undefined ? values[k] : '';
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(isoDate) {
+      try {
+        const d = new Date(isoDate + 'T00:00:00Z');
+        return new Intl.DateTimeFormat(t('locale'), {
+          weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'
+        }).format(d);
+      } catch (e) {
+        return isoDate;
+      }
+    }
+
+    function formatClock(date) {
+      try {
+        return new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+      } catch (e) {
+        return date.toTimeString().slice(0, 5);
+      }
+    }
+
+    function toMinutes(hhmm) {
+      const parts = hhmm.split(':');
+      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+
+    function diffMinutes(scheduled, time) {
+      if (!scheduled || !time) return 0;
+      return toMinutes(time) - toMinutes(scheduled);
+    }
+
+    function delayInfo(scheduled, time) {
+      const diff = diffMinutes(scheduled, time);
+      if (!time || diff === 0) return { cls: '', label: '' };
+      return {
+        cls: diff > 0 ? 'is-late' : 'is-early',
+        label: (diff > 0 ? '+' : '−') + Math.abs(diff) + ' ' + t('min')
+      };
+    }
+
+    /* Largest positive delay across departure and arrival. */
+    function maxDelay(f) {
+      return Math.max(
+        0,
+        diffMinutes(f.departure.scheduled, f.departure.time),
+        diffMinutes(f.arrival.scheduled, f.arrival.time)
+      );
+    }
+
+    /* green / yellow / red */
+    function getSeverity(f) {
+      if (f.status === 'cancelled' || f.status === 'diverted') return 'red';
+      const d = maxDelay(f);
+      if (d > THRESHOLDS.LONG_DELAY) return 'red';
+      if (d > THRESHOLDS.ON_TIME) return 'yellow';
+      return 'green';
+    }
+
+    function getStatusKey(f) {
+      if (f.status === 'cancelled') return 'statusCancelled';
+      if (f.status === 'diverted') return 'statusDiverted';
+      return maxDelay(f) > THRESHOLDS.ON_TIME ? 'statusDelayed' : 'statusOnTime';
+    }
+
+    function getCurrentFlight() {
+      const base = MOCK_DATA[0];
+      if (!base) return null;
+      const s = SCENARIOS[state.scenario];
+      if (!s) return base;
+      return Object.assign({}, base, {
+        status: s.status,
+        reasonKey: s.reasonKey,
+        departure: Object.assign({}, base.departure, s.dep),
+        arrival: Object.assign({}, base.arrival, s.arr)
+      });
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add('is-visible');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(function () {
+        els.toast.classList.remove('is-visible');
+      }, 2200);
+    }
+
+    function field(label, valueHtml, extraClass) {
+      return (
+        '<div class="field">' +
+          '<span class="field-label">' + escapeHtml(label) + '</span>' +
+          '<span class="field-value ' + (extraClass || '') + '">' + valueHtml + '</span>' +
+        '</div>'
+      );
+    }
+
+    /* =========================================================
+       HERO (large status card)
+       ========================================================= */
+    function heroTimeBlock(kind, leg, airportCode, cityKey, alignClass, isCancelled) {
+      const typeLabel = isCancelled ? '' : ' · ' + (leg.timeType === 'actual' ? t('actual') : t('estimated'));
+      const shown = leg.time || '—';
+      const changed = !leg.time || leg.time !== leg.scheduled;
+      const was = changed ? escapeHtml(fill(t('was'), { time: leg.scheduled })) : '&nbsp;';
+      return (
+        '<div class="' + alignClass + '">' +
+          '<div class="ht-label">' + escapeHtml(t(kind) + typeLabel) + '</div>' +
+          '<div class="ht-time">' + escapeHtml(shown) + '</div>' +
+          '<div class="ht-was">' + (changed ? '<s>' + was + '</s>' : was) + '</div>' +
+          '<div class="ht-code">' + escapeHtml(airportCode + ' · ' + t(cityKey)) + '</div>' +
+        '</div>'
+      );
+    }
+
+    function buildHero(f, sev) {
+      const delay = maxDelay(f);
+      let sub = t('sev_' + sev);
+      if (f.status === 'delayed' && delay > 0) {
+        sub += ' · +' + delay + ' ' + t('min');
+      }
+      const isCancelled = f.status === 'cancelled';
+
+      return (
+        '<div class="hero-main">' +
+          '<div class="hero-left">' +
+            '<div class="hero-flight">' +
+              '<span class="fno">' + escapeHtml(f.flightNo) + '</span><span aria-hidden="true">·</span>' +
+              '<span>' + escapeHtml(f.origin.code + ' → ' + f.destination.code) + '</span><span aria-hidden="true">·</span>' +
+              '<span>' + escapeHtml(formatDate(f.departure.date)) + '</span>' +
+            '</div>' +
+            '<div class="hero-headline">' +
+              '<span class="hero-status">' + escapeHtml(t(getStatusKey(f))) + '</span>' +
+              '<span class="hero-sub">' + escapeHtml(sub) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="hero-icon">' + ICONS[SEVERITY_ICON[sev]] + '</div>' +
+        '</div>' +
+        '<div class="hero-times">' +
+          heroTimeBlock('departure', f.departure, f.origin.code, f.origin.cityKey, 'ht-dep', isCancelled) +
+          '<div class="ht-line">' + ICONS.plane + ICONS.dotted + ICONS.pin + '</div>' +
+          heroTimeBlock('arrival', f.arrival, f.destination.code, f.destination.cityKey, 'ht-arr', isCancelled) +
+        '</div>'
+      );
+    }
+
+    /* =========================================================
+       REASON CARD
+       TODO (production): fetch reason text from a Google Cloud Vertex AI endpoint, e.g.
+       POST https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/google/models/{model}:generateContent
+       with flight ops context (weather, ATC, inbound aircraft) and return a headline + 1-line advice.
+       ========================================================= */
+    function buildReason(f, sev) {
+      const title = sev === 'green' ? t('reasonTitleOk') : t('reasonTitleIssue');
+      return (
+        '<div class="reason-head">' +
+          '<h2 class="reason-title">' + escapeHtml(title) + '</h2>' +
+          '<span class="ai-badge">✨ ' + escapeHtml(t('aiBadge')) + '</span>' +
+        '</div>' +
+        '<p class="reason-text">' + escapeHtml(t('reason_' + f.reasonKey)) + '</p>' +
+        '<p class="reason-detail">' + escapeHtml(t('detail_' + f.reasonKey)) + '</p>'
+      );
+    }
+
+    /* =========================================================
+       FLIGHT DETAILS CARD
+       ========================================================= */
+    function buildCard(f, sev) {
+      const depDelay = delayInfo(f.departure.scheduled, f.departure.time);
+      const arrDelay = delayInfo(f.arrival.scheduled, f.arrival.time);
+      const depLabel = f.departure.timeType === 'actual' ? t('actual') : t('estimated');
+      const arrLabel = f.arrival.timeType === 'actual' ? t('actual') : t('estimated');
+
+      const routeCol =
+        '<div class="col">' +
+          '<h3 class="col-title">' + escapeHtml(t('routeSchedule')) + '</h3>' +
+          '<div class="route-visual">' + ICONS.plane + ICONS.dotted + ICONS.pin + '</div>' +
+          '<div class="route-codes"><span>' + escapeHtml(f.origin.code) + '</span><span>' + escapeHtml(f.destination.code) + '</span></div>' +
+          '<div class="route-cities"><span>' + escapeHtml(t(f.origin.cityKey)) + '</span><span>' + escapeHtml(t(f.destination.cityKey)) + '</span></div>' +
+          field(t('date'), escapeHtml(formatDate(f.departure.date))) +
+          field(t('scheduled'), escapeHtml(f.departure.scheduled + ' – ' + f.arrival.scheduled), 'time') +
+        '</div>';
+
+      function legCol(titleKey, leg, timeLabel, delay, code) {
+        return (
+          '<div class="col">' +
+            '<h3 class="col-title">' + escapeHtml(t(titleKey)) + '</h3>' +
+            field(t('date'), escapeHtml(formatDate(leg.date))) +
+            field(t('scheduled'), escapeHtml(leg.scheduled), 'time') +
+            field(timeLabel,
+              escapeHtml(leg.time || '—') +
+              (delay.label ? '<span class="delta">(' + escapeHtml(delay.label) + ')</span>' : ''),
+              'time ' + delay.cls) +
+            field(t('airport'), escapeHtml(code), 'airport-code') +
+          '</div>'
+        );
+      }
+
+      return (
+        '<article class="flight-card" data-flight-id="' + escapeHtml(f.id) + '">' +
+          '<div class="card-head">' +
+            '<div class="flight-no"><span>' + escapeHtml(t('flight')) + '</span>' + escapeHtml(f.flightNo) + '</div>' +
+          '</div>' +
+          '<div class="card-grid">' +
+            routeCol +
+            legCol('departure', f.departure, depLabel, depDelay, f.origin.code) +
+            legCol('arrival', f.arrival, arrLabel, arrDelay, f.destination.code) +
+          '</div>' +
+        '</article>'
+      );
+    }
+
+    /* =========================================================
+       SCENARIO BAR (prototype only)
+       ========================================================= */
+    function renderScenarioBar() {
+      els.scenarioBar.innerHTML =
+        SCENARIO_ORDER.map(function (key) {
+          return (
+            '<button type="button" class="scenario-btn" data-scenario="' + key + '" aria-pressed="' + (key === state.scenario) + '">' +
+              '<span class="dot ' + SCENARIOS[key].dot + '" aria-hidden="true"></span>' +
+              escapeHtml(t('scn_' + key)) +
+            '</button>'
+          );
+        }).join('');
+    }
+
+    /* =========================================================
+       RENDER
+       ========================================================= */
+    function renderFlights(language) {
+      if (language && TRANSLATIONS[language]) state.language = language;
+      document.documentElement.lang = state.language;
+
+      const f = getCurrentFlight();
+
+      els.pageEyebrow.textContent = t('eyebrow');
+      els.lastUpdated.textContent = fill(t('lastUpdated'), { time: formatClock(state.lastUpdated) });
+      els.refreshLabel.textContent = state.isBusy ? t('refreshing') : t('refresh');
+      els.langMenuTitle.textContent = t('menuTitle');
+      els.detailsTitle.textContent = t('flightDetails');
+      els.translatedChip.classList.toggle('is-visible', state.language !== 'en');
+      els.translatedChipText.textContent = t('translatedChip');
+      renderScenarioBar();
+
+      if (!f) return;
+
+      els.pageTitle.textContent = fill(t('routeTitle'), {
+        from: t(f.origin.cityKey), fromCode: f.origin.code,
+        to: t(f.destination.cityKey), toCode: f.destination.code
+      });
+
+      const sev = getSeverity(f);
+
+      els.hero.className = 'hero sev-' + sev + (state.compact ? ' is-compact' : '');
+      els.hero.innerHTML = buildHero(f, sev);
+
+      els.reasonCard.className = 'reason-card sev-' + sev;
+      els.reasonCard.innerHTML = buildReason(f, sev);
+
+      els.container.innerHTML = buildCard(f, sev);
+
+      els.langOptions.forEach(function (btn) {
+        btn.setAttribute('aria-checked', btn.getAttribute('data-lang') === state.language ? 'true' : 'false');
+      });
+    }
+
+    /* =========================================================
+       SHRINK HERO ON SCROLL
+       Hysteresis (two thresholds) prevents flicker at the boundary.
+       ========================================================= */
+    const SCROLL_COMPACT_AT = 140;
+    const SCROLL_EXPAND_AT = 60;
+    let scrollTicking = false;
+
+    function updateCompact() {
+      scrollTicking = false;
+      const y = window.scrollY || window.pageYOffset || 0;
+      let next = state.compact;
+      if (!state.compact && y > SCROLL_COMPACT_AT) next = true;
+      else if (state.compact && y < SCROLL_EXPAND_AT) next = false;
+      if (next !== state.compact) {
+        state.compact = next;
+        els.hero.classList.toggle('is-compact', next);
+      }
+    }
+
+    window.addEventListener('scroll', function () {
+      if (!scrollTicking) {
+        scrollTicking = true;
+        window.requestAnimationFrame(updateCompact);
+      }
+    }, { passive: true });
+
+    /* =========================================================
+       MOCK API CALLS
+       ========================================================= */
+
+    // TODO: Replace with real flight status API call (HK Express / Cathay ops data).
+    function fetchFlightStatus() {
+      return new Promise(function (resolve) {
+        setTimeout(function () { resolve(MOCK_DATA); }, 1000);
+      });
+    }
+
+    // TODO: Replace with Google Cloud Translation API (v3) call, e.g.
+    // POST https://translation.googleapis.com/v3/projects/{project}/locations/global:translateText
+    // body: { contents: [...cardStrings], targetLanguageCode: lang, mimeType: "text/plain" }
+    // Route through a backend proxy so credentials are never exposed client-side.
+    function mockTranslateApi(lang) {
+      return new Promise(function (resolve) {
+        setTimeout(function () { resolve(TRANSLATIONS[lang] || TRANSLATIONS.en); }, 450);
+      });
+    }
+
+    /* =========================================================
+       ACTIONS
+       ========================================================= */
+    function setLoading(isLoading) {
+      state.isBusy = isLoading;
+      els.content.classList.toggle('is-loading', isLoading);
+      els.content.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    }
+
+    function handleRefresh() {
+      if (state.isBusy) return;
+      setLoading(true);
+      els.refreshBtn.disabled = true;
+      els.refreshBtn.classList.add('is-loading');
+      els.refreshLabel.textContent = t('refreshing');
+
+      fetchFlightStatus().then(function () {
+        state.lastUpdated = new Date();
+        setLoading(false);
+        els.refreshBtn.disabled = false;
+        els.refreshBtn.classList.remove('is-loading');
+        renderFlights(state.language);
+        showToast(t('refreshed'));
+      });
+    }
+
+    function handleLanguageChange(lang) {
+      closeMenu();
+      if (!TRANSLATIONS[lang] || state.isBusy || lang === state.language) return;
+
+      setLoading(true);
+      els.fabBtn.classList.add('is-busy');
+      showToast(TRANSLATIONS[lang].translating);
+
+      mockTranslateApi(lang).then(function (dict) {
+        setLoading(false);
+        els.fabBtn.classList.remove('is-busy');
+        renderFlights(lang);
+        showToast(fill(dict.translatedTo, { lang: dict.langName }));
+      });
+    }
+
+    /* =========================================================
+       LANGUAGE MENU
+       ========================================================= */
+    function openMenu() {
+      els.langMenu.classList.add('is-open');
+      els.fabBtn.setAttribute('aria-expanded', 'true');
+      const active = els.langMenu.querySelector('.lang-option[aria-checked="true"]');
+      if (active) active.focus();
+    }
+
+    function closeMenu() {
+      els.langMenu.classList.remove('is-open');
+      els.fabBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    /* =========================================================
+       EVENT LISTENERS
+       ========================================================= */
+    els.refreshBtn.addEventListener('click', handleRefresh);
+
+    els.fabBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (els.langMenu.classList.contains('is-open')) closeMenu(); else openMenu();
+    });
+
+    els.langOptions.forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        handleLanguageChange(btn.getAttribute('data-lang'));
+      });
+    });
+
+    els.scenarioBar.addEventListener('click', function (e) {
+      const btn = e.target.closest('.scenario-btn');
+      if (!btn || state.isBusy) return;
+      state.scenario = btn.getAttribute('data-scenario');
+      state.lastUpdated = new Date();
+      renderFlights(state.language);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!els.fab.contains(e.target)) closeMenu();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && els.langMenu.classList.contains('is-open')) {
+        closeMenu();
+        els.fabBtn.focus();
+      }
+    });
+
+    /* =========================================================
+       INIT
+       ========================================================= */
+    renderFlights('en');
+    updateCompact();
+  })();
+  </script>
+</body>
+</html>
