@@ -11,9 +11,17 @@ Flight Status prototype (HK Express hackathon UI).
 
 Open the passenger page at `https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Passenger/`
 and the controller at `https://sabdulahad0523-ctrl.github.io/E421_Repo/UI%20Controller/`.
-Keep both pages open in tabs in the same browser and choose a scenario in the controller;
-the passenger page updates immediately. This uses browser `localStorage` and works for
-pages on the same site origin. It does not synchronize changes to another person's browser.
+Keep both pages open in tabs in the same browser. Typing a flight number or choosing a
+scenario in the controller applies the controller's scenario to the passenger page only
+when both pages have the same flight number selected and the passenger presses **Refresh Status**.
+The two flight-number inputs remain independent. This uses browser `localStorage` and works for pages on the same site origin;
+it does not synchronize changes to another person's browser. Flight numbers currently
+update the display while the route and status data remain mocked for UO612.
+The passenger page also shows demo support-choice dialogs for short delays, long delays,
+and cancellations. These options are illustrative only, not confirmed airline benefits;
+diverted flights do not show the choice dialog.
+Controller changes are staged until the passenger presses **Refresh Status**. Delayed
+flights also show a delay-amount meter in the disruption reason card.
 To show a specific scenario in a shareable URL, add `?scenario=ontime`, `?scenario=short`,
 `?scenario=long`, `?scenario=cancelled`, or `?scenario=diverted` to the passenger page URL.
 

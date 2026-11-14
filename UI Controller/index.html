@@ -11,6 +11,10 @@
     <p class="page-eyebrow">Demo controls</p>
     <h1 class="page-title">Flight status controller</h1>
     <p class="controller-help">Choose a scenario to update the passenger page in another tab in this browser.</p>
+    <div class="flight-selector controller-flight-selector">
+      <label for="flightNumberInput">Flight number</label>
+      <input id="flightNumberInput" type="text" maxlength="10" autocomplete="off" placeholder="e.g. UO612" />
+    </div>
     <div class="controller-options" role="group" aria-label="Flight status scenario">
       <button type="button" class="scenario-btn" data-scenario="ontime">On time</button>
       <button type="button" class="scenario-btn" data-scenario="short">Short delay</button>
@@ -33,6 +37,7 @@
       };
       var buttons = document.querySelectorAll('[data-scenario]');
       var status = document.getElementById('controllerStatus');
+      var flightNumberInput = document.getElementById('flightNumberInput');
 
       function currentScenario() {
         var value = new URLSearchParams(window.location.search).get('scenario') || localStorage.getItem('flightScenario') || 'diverted';
@@ -45,6 +50,7 @@
           button.setAttribute('aria-pressed', button.getAttribute('data-scenario') === current ? 'true' : 'false');
         });
         status.textContent = 'Current scenario: ' + names[current];
+        flightNumberInput.value = localStorage.getItem('controllerFlightNumber') || 'UO612';
       }
 
       buttons.forEach(function (button) {
@@ -55,7 +61,17 @@
         });
       });
 
-      window.addEventListener('storage', updateSelected);
+      flightNumberInput.addEventListener('input', function () {
+        var flightNumber = flightNumberInput.value.trim().toUpperCase() || 'UO612';
+        localStorage.setItem('controllerFlightNumber', flightNumber);
+      });
+      flightNumberInput.addEventListener('blur', function () {
+        flightNumberInput.value = flightNumberInput.value.trim().toUpperCase() || 'UO612';
+      });
+
+      window.addEventListener('storage', function (e) {
+        if (e.key === 'controllerFlightNumber' || e.key === 'flightScenario') updateSelected();
+      });
       updateSelected();
     })();
   </script>

@@ -35,7 +35,6 @@
       --transition: 180ms ease;
       --shrink: 260ms cubic-bezier(.2, .7, .2, 1);
     }
-
     /* =========================================================
        BASE
        ========================================================= */
@@ -231,6 +230,30 @@
       background: var(--brand-light);
     }
 
+    .flight-selector {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      margin: 0 0 18px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .flight-selector input {
+      width: min(100%, 460px);
+      max-width: 100%;
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--text);
+      font: 800 56px/1.2 var(--font);
+      font-variant-numeric: tabular-nums;
+    }
+    .flight-selector input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .controller-flight-selector { margin-bottom: 20px; }
+
     .controller-link { margin: -10px 0 16px; font-size: 13px; }
     .controller-link a, .controller-passenger-link { color: var(--brand); font-weight: 600; }
     .controller-help { color: var(--text-muted); margin: 0 0 20px; }
@@ -302,12 +325,21 @@
 
     .hero-headline {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
+      flex-direction: row;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 4px 12px;
       margin-top: 6px;
       transition: gap var(--shrink);
     }
     .hero-status {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.5px;
+      transition: font-size var(--shrink);
+    }
+    .hero-flight-number {
       font-size: 56px;
       font-weight: 800;
       line-height: 1.05;
@@ -380,6 +412,7 @@
     .hero.is-compact .hero-flight { font-size: 12px; }
     .hero.is-compact .hero-headline { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; }
     .hero.is-compact .hero-status { font-size: 24px; }
+    .hero.is-compact .hero-flight-number { font-size: 24px; }
     .hero.is-compact .hero-sub { font-size: 13px; }
     .hero.is-compact .hero-icon { width: 40px; height: 40px; }
     .hero.is-compact .hero-icon svg { width: 22px; height: 22px; }
@@ -424,22 +457,12 @@
     }
     .reason-text { font-size: 21px; font-weight: 700; margin: 0 0 6px; }
     .reason-detail { font-size: 15px; margin: 0 0 10px; }
+    .delay-progress { margin: 14px 0 16px; }
+    .delay-progress-label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: 13px; color: var(--text-muted); }
+    .delay-progress-label strong { color: var(--status-alert); font-variant-numeric: tabular-nums; }
+    .delay-progress-track { height: 10px; overflow: hidden; border-radius: var(--radius-pill); background: #f0eaf4; }
+    .delay-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sev-yellow), var(--sev-red)); transition: width 300ms ease; }
     .reason-source { font-size: 12px; color: var(--text-muted); }
-
-    .ai-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      color: var(--brand);
-      background: var(--brand-light);
-      border: 1px solid rgba(107, 47, 160, 0.18);
-      border-radius: var(--radius-pill);
-      padding: 3px 9px;
-      white-space: nowrap;
-    }
 
     /* =========================================================
        FLIGHT DETAILS CARD
@@ -608,6 +631,59 @@
     }
     .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
 
+    .compensation-dialog {
+      width: min(520px, calc(100% - 32px));
+      max-height: min(84vh, 720px);
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+    }
+    .compensation-dialog::backdrop { background: rgba(25, 18, 35, 0.55); }
+    .compensation-head { display: flex; justify-content: space-between; gap: 16px; }
+    .compensation-head h2 { margin: 0 0 8px; font-size: 21px; }
+    .compensation-head p { margin: 0 0 16px; color: var(--text-muted); }
+    .compensation-close {
+      align-self: flex-start;
+      border: 0;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 26px;
+      line-height: 1;
+    }
+    .compensation-disclaimer {
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: var(--brand-light);
+      color: var(--brand-dark);
+      font-size: 12px;
+    }
+    .compensation-options { display: grid; gap: 9px; margin: 0 0 20px; padding: 0; border: 0; }
+    .compensation-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .compensation-option:has(input:checked) { border-color: var(--brand); background: var(--brand-light); }
+    .compensation-option input { margin-top: 4px; accent-color: var(--brand); }
+    .compensation-submit {
+      width: 100%;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: var(--radius-pill);
+      background: var(--brand);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .compensation-submit:hover { background: var(--brand-dark); }
+
     /* =========================================================
        RESPONSIVE
        ========================================================= */
@@ -631,9 +707,11 @@
 
       .page { padding: 22px 14px 120px; }
       .page-title { font-size: 22px; }
+      .flight-selector input { font-size: 40px; }
 
       .hero { padding: 20px; top: calc(var(--header-h) + 8px); }
       .hero-status { font-size: 40px; }
+      .hero-flight-number { font-size: 40px; }
       .hero-icon { width: 60px; height: 60px; }
       .hero-icon svg { width: 32px; height: 32px; }
       .ht-time { font-size: 26px; }
@@ -641,6 +719,7 @@
       .ht-line svg.icon { display: none; }
       .hero.is-compact { padding: 10px 14px; }
       .hero.is-compact .hero-status { font-size: 20px; }
+      .hero.is-compact .hero-flight-number { font-size: 20px; }
       .hero.is-compact .hero-icon { width: 34px; height: 34px; }
       .hero.is-compact .hero-icon svg { width: 18px; height: 18px; }
 
