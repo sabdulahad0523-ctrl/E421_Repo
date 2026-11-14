@@ -17,7 +17,8 @@ Keep both pages open in tabs in the same browser. The controller publishes fligh
 to same-origin `localStorage`; on **Refresh Status**, the passenger page applies the newest
 published update only when its entered flight number matches. The controller and passenger
 flight-number inputs remain independent. Changes do not synchronize to other people's browsers.
-If there is no matching published update, the passenger page falls back to its mock flight details.
+The passenger page starts with an On Time mock flight. On refresh, if there is no matching
+published update, it also falls back to On Time mock flight details.
 For mock scenarios, the passenger page shows demo support-choice dialogs for short delays,
 long delays, and cancellations. For controller-published updates, it shows choices only
 when the update includes entitlements; a delay with no entitlements has no popup. The demo
@@ -28,14 +29,13 @@ Controller updates appear on the passenger page only after the passenger presses
 **Refresh Status**. Delayed flights also show a delay-amount meter in the disruption reason card.
 
 The controller preview includes a placeholder for a passenger's native-language message;
-it does not read phone numbers or passports. To enable live passenger-page translation,
-set `GOOGLE_TRANSLATION_ENDPOINT` in `UI Passenger/index.html` to an HTTPS backend proxy.
-The proxy receives `{ contents, targetLanguageCode, mimeType }` and should return
-Google Cloud Translation v3's `{ translations: [{ translatedText }] }` response shape.
-Keep Google credentials on the proxy, not in this static site. With no endpoint configured,
-the existing sample translations remain available.
+it does not read phone numbers or passports. The passenger page has built-in English,
+Traditional Chinese, and Japanese translations. Switching languages is local and immediate,
+with no translation API, API key, or translation charges.
 
-## Run it locally with Live Server (VS Code)
+## Optional: run it locally with Live Server (VS Code)
+
+GitHub Pages demos need only the live links above; VS Code and Live Server are not required.
 
 1. Install the **Live Server** extension (`ritwickdey.LiveServer`).
 2. Open this repo folder in VS Code.
@@ -46,16 +46,6 @@ The browser opens `http://127.0.0.1:5500/`, which redirects to the passenger pag
 Open the controller in a second tab at
 [`http://127.0.0.1:5500/UI%20Controller/index.html`](http://127.0.0.1:5500/UI%20Controller/index.html).
 Any save in VS Code auto-reloads the pages.
-
-### View the local server from another computer (same Wi-Fi)
-
-`.vscode/settings.json` already binds Live Server to all network interfaces, so:
-
-1. On this machine find your local IP: `ipconfig getifaddr en0` (macOS) / `ipconfig` (Windows).
-2. On the other computer open `http://<that-ip>:5500` — e.g. `http://192.168.1.24:5500`.
-
-Your machine has to stay awake and both devices must be on the same network, so use the
-GitHub Pages link above whenever you need a link that works anywhere.
 
 ## Files
 
