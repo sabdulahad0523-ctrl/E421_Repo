@@ -15,6 +15,15 @@ const FLIGHT_DEMO = (function () {
     UO702: { to: 'TPE', day: 0, std: 20 * 60 + 40, gate: '31', pax: 176 },
     UO116: { to: 'CTS', day: 1, std: 8 * 60 + 30, gate: '19', pax: 220 }
   };
+  const routeTimings = {
+    NRT: { duration: 260, localOffset: 60 },
+    KIX: { duration: 220, localOffset: 60 },
+    TPE: { duration: 115, localOffset: 0 },
+    ICN: { duration: 215, localOffset: 60 },
+    CTS: { duration: 290, localOffset: 60 },
+    FUK: { duration: 200, localOffset: 60 },
+    BKK: { duration: 180, localOffset: -60 }
+  };
   const todayISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Hong_Kong' }).format(new Date());
 
   function normalizeFlightNumber(value) {
@@ -37,5 +46,22 @@ const FLIGHT_DEMO = (function () {
     return { ...preset, date: addDays(todayISO, preset.day) };
   }
 
-  return { defaultFlightNumber: 'UO612', routes, todayISO, normalizeFlightNumber, addDays, formatTime, getDefaults };
+  function arrivalTimes(destination, date, departureMinutes, delayMinutes = 0) {
+    const timing = routeTimings[destination];
+    if (!timing) {
+      console.error('No demo arrival schedule for destination:', destination);
+      return { scheduledArrival: null, scheduledArrivalDate: null, newArrival: null, newArrivalDate: null };
+    }
+    // Convert the HKG departure clock to the destination's local arrival clock.
+    const scheduled = departureMinutes + timing.duration + timing.localOffset;
+    const estimated = Number.isFinite(delayMinutes) ? scheduled + delayMinutes : null;
+    return {
+      scheduledArrival: formatTime(scheduled),
+      scheduledArrivalDate: addDays(date, Math.floor(scheduled / 1440)),
+      newArrival: estimated === null ? null : formatTime(estimated),
+      newArrivalDate: estimated === null ? null : addDays(date, Math.floor(estimated / 1440))
+    };
+  }
+
+  return { defaultFlightNumber: 'UO612', routes, todayISO, normalizeFlightNumber, addDays, formatTime, getDefaults, arrivalTimes };
 }());

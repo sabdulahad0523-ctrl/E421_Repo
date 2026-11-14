@@ -550,14 +550,17 @@
       return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
     }
 
-    function diffMinutes(scheduled, time) {
+    function diffMinutes(scheduled, time, scheduledDate, date) {
       if (!scheduled || !time) return 0;
-      return toMinutes(time) - toMinutes(scheduled);
+      const dateDifference = scheduledDate && date
+        ? (new Date(date + 'T00:00:00Z') - new Date(scheduledDate + 'T00:00:00Z')) / 60000
+        : 0;
+      return dateDifference + toMinutes(time) - toMinutes(scheduled);
     }
 
-    function delayInfo(scheduled, time) {
-      const diff = diffMinutes(scheduled, time);
-      if (!time || diff === 0) return { cls: '', label: '' };
+    function delayInfo(leg) {
+      const diff = diffMinutes(leg.scheduled, leg.time, leg.scheduledDate, leg.date);
+      if (!leg.time || diff === 0) return { cls: '', label: '' };
       return {
         cls: diff > 0 ? 'is-late' : 'is-early',
         label: (diff > 0 ? '+' : '−') + Math.abs(diff) + ' ' + t('min')
@@ -569,8 +572,8 @@
       if (Number.isFinite(f.delayMinutes)) return Math.max(0, f.delayMinutes);
       return Math.max(
         0,
-        diffMinutes(f.departure.scheduled, f.departure.time),
-        diffMinutes(f.arrival.scheduled, f.arrival.time)
+        diffMinutes(f.departure.scheduled, f.departure.time, f.departure.scheduledDate, f.departure.date),
+        diffMinutes(f.arrival.scheduled, f.arrival.time, f.arrival.scheduledDate, f.arrival.date)
       );
     }
 
@@ -590,6 +593,16 @@
       return maxDelay(f) > THRESHOLDS.ON_TIME ? 'statusDelayed' : 'statusOnTime';
     }
 
+    function arrivalLeg(times, fallbackDate) {
+      return {
+        scheduledDate: times.scheduledArrivalDate || fallbackDate,
+        date: times.newArrivalDate || times.scheduledArrivalDate || fallbackDate,
+        scheduled: times.scheduledArrival || '—',
+        time: times.newArrival || null,
+        timeType: 'estimated'
+      };
+    }
+
     function getCurrentFlight() {
       const defaults = FLIGHT_DEMO.getDefaults(state.flightNumber);
       const scheduled = FLIGHT_DEMO.formatTime(defaults.std);
@@ -598,8 +611,8 @@
         flightNo: state.flightNumber,
         origin: { code: 'HKG', cityKey: 'cityHKG' },
         destination: { code: defaults.to },
-        departure: { date: defaults.date, scheduled: scheduled, time: scheduled, timeType: 'estimated' },
-        arrival: { date: defaults.date, scheduled: '—', time: null, timeType: 'estimated' },
+        departure: { date: defaults.date, scheduledDate: defaults.date, scheduled: scheduled, time: scheduled, timeType: 'estimated' },
+        arrival: arrivalLeg(FLIGHT_DEMO.arrivalTimes(defaults.to, defaults.date, defaults.std), defaults.date),
         status: 'scheduled',
         reasonKey: 'ontime'
       };
@@ -618,6 +631,12 @@
           ? passengerMessage
           : passengerMessage && (passengerMessage[languageKey] || passengerMessage.en);
         const date = update.newDepartureDate || update.date || base.departure.date;
+        const scheduledDate = update.date || base.departure.scheduledDate;
+        const scheduledDeparture = update.scheduledDeparture || base.departure.scheduled;
+        const arrivalDelay = update.status === 'on_time' ? 0
+          : update.status === 'delayed' && update.newDeparture ? delay : null;
+        const arrival = update.scheduledArrival !== undefined ? update
+          : FLIGHT_DEMO.arrivalTimes(update.route.to || defaults.to, scheduledDate, toMinutes(scheduledDeparture), arrivalDelay);
         return {
           id: 'published',
           flightNo: update.flightNumber,
@@ -625,11 +644,14 @@
           destination: { code: update.route.to || base.destination.code, name: update.route.toName || update.route.to || base.destination.code },
           departure: {
             date: date,
-            scheduled: update.scheduledDeparture || base.departure.scheduled,
+            scheduledDate: scheduledDate,
+            scheduled: scheduledDeparture,
             time: update.status === 'cancelled' ? null : (update.newDeparture || null),
             timeType: 'estimated'
           },
-          arrival: { date: date, scheduled: '—', time: null, timeType: 'estimated' },
+          arrival: arrivalLeg(Object.assign({}, arrival, {
+            newArrival: update.status === 'cancelled' ? null : arrival.newArrival
+          }), scheduledDate),
           status: update.status === 'cancelled' ? 'cancelled' : update.status === 'delayed' ? 'delayed' : 'scheduled',
           statusColour: update.statusColour,
           delayMinutes: delay,
@@ -645,6 +667,7 @@
         status: s.status,
         reasonKey: state.scenario,
         delayMinutes: s.delay,
+        arrival: arrivalLeg(FLIGHT_DEMO.arrivalTimes(defaults.to, defaults.date, defaults.std, s.delay), defaults.date),
         departure: Object.assign({}, base.departure, {
           date: departureMinutes === null ? defaults.date : FLIGHT_DEMO.addDays(defaults.date, Math.floor(departureMinutes / 1440)),
           time: departureMinutes === null ? null : FLIGHT_DEMO.formatTime(departureMinutes),
@@ -717,15 +740,16 @@
     /* =========================================================
        HERO (large status card)
        ========================================================= */
-    function heroTimeBlock(kind, leg, airportCode, cityName, alignClass, isCancelled) {
+    function heroTimeBlock(kind, leg, airportCode, cityName, alignClass, isCancelled, departureDate) {
       const typeLabel = isCancelled ? '' : ' · ' + (leg.timeType === 'actual' ? t('actual') : t('estimated'));
+      const dateLabel = kind === 'arrival' && leg.time && leg.date !== departureDate ? ' · ' + formatDate(leg.date) : '';
       const shown = leg.time || '—';
       const hasScheduledTime = leg.scheduled && leg.scheduled !== '—';
-      const changed = hasScheduledTime && (!leg.time || leg.time !== leg.scheduled);
+      const changed = hasScheduledTime && (!leg.time || diffMinutes(leg.scheduled, leg.time, leg.scheduledDate, leg.date) !== 0);
       const was = changed ? escapeHtml(fill(t('was'), { time: leg.scheduled })) : '&nbsp;';
       return (
         '<div class="' + alignClass + '">' +
-          '<div class="ht-label">' + escapeHtml(t(kind) + typeLabel) + '</div>' +
+          '<div class="ht-label">' + escapeHtml(t(kind) + typeLabel + dateLabel) + '</div>' +
           '<div class="ht-time">' + escapeHtml(shown) + '</div>' +
           '<div class="ht-was">' + (changed ? '<s>' + was + '</s>' : was) + '</div>' +
           '<div class="ht-code">' + escapeHtml(airportCode + ' · ' + cityName) + '</div>' +
@@ -761,7 +785,7 @@
         '<div class="hero-times">' +
           heroTimeBlock('departure', f.departure, f.origin.code, cityLabel(f.origin), 'ht-dep', isCancelled) +
           '<div class="ht-line">' + ICONS.plane + ICONS.dotted + ICONS.pin + '</div>' +
-          heroTimeBlock('arrival', f.arrival, f.destination.code, cityLabel(f.destination), 'ht-arr', isCancelled) +
+          heroTimeBlock('arrival', f.arrival, f.destination.code, cityLabel(f.destination), 'ht-arr', isCancelled, f.departure.date) +
         '</div>'
       );
     }
@@ -794,8 +818,8 @@
        FLIGHT DETAILS CARD
        ========================================================= */
     function buildCard(f, sev) {
-      const depDelay = delayInfo(f.departure.scheduled, f.departure.time);
-      const arrDelay = delayInfo(f.arrival.scheduled, f.arrival.time);
+      const depDelay = delayInfo(f.departure);
+      const arrDelay = delayInfo(f.arrival);
       const depLabel = f.departure.timeType === 'actual' ? t('actual') : t('estimated');
       const arrLabel = f.arrival.timeType === 'actual' ? t('actual') : t('estimated');
 
@@ -810,11 +834,13 @@
         '</div>';
 
       function legCol(titleKey, leg, timeLabel, delay, code) {
+        const scheduledTime = leg.scheduled + (leg.scheduledDate && leg.scheduledDate !== leg.date
+          ? ' · ' + formatDate(leg.scheduledDate) : '');
         return (
           '<div class="col">' +
             '<h3 class="col-title">' + escapeHtml(t(titleKey)) + '</h3>' +
             field(t('date'), escapeHtml(formatDate(leg.date))) +
-            field(t('scheduled'), escapeHtml(leg.scheduled), 'time') +
+            field(t('scheduled'), escapeHtml(scheduledTime), 'time') +
             field(timeLabel,
               escapeHtml(leg.time || '—') +
               (delay.label ? '<span class="delta">(' + escapeHtml(delay.label) + ')</span>' : ''),

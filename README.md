@@ -25,8 +25,14 @@ The passenger page starts On Time using its selected flight's default route, dep
 and date (based on the Hong Kong date). Refreshing without a matching published update uses
 the same defaults. UO 870, UO 702 and UO 116 have presets; other flight numbers, including
 UO 612, use the shared HKG → NRT, 14:55 departure default, not the previously selected flight.
-These are demo schedules, not live airline data. Arrival times are shown as `—` because
-the controller does not provide an arrival schedule.
+These are demo schedules, not live airline data. Shared illustrative flight durations determine
+scheduled arrivals, and the departure delay shifts the estimated arrival by the same amount.
+Times are local to each airport, including destination time-zone differences and next-day arrivals.
+For example, UO 612 departs at 14:55 HKT and arrives at 20:15 Japan time; a 40-minute delay
+changes its estimates to 15:35 and 20:55 respectively, without changing the scheduled times.
+The controller publishes both arrival times and their dates. Older saved updates without
+arrival fields use the same demo calculation. Cancelled flights and updates with no confirmed
+departure estimate retain the scheduled arrival but show `—` for estimated arrival.
 On Time is green, short delays (up to 60 minutes) are yellow, and longer delays,
 cancellations, and diversions are red. Delays with an unconfirmed duration are also red.
 These demo colours do not change compensation eligibility.
@@ -69,6 +75,14 @@ Any save in VS Code auto-reloads the pages.
 
 GitHub Pages can publish these ordinary HTML/CSS files without `.nojekyll`. That marker is
 mainly needed when bypassing Jekyll for files or folders whose names begin with `_`.
+
+## Test arrival calculations
+
+With Node.js installed (no packages required):
+
+```bash
+node --test tests/flight-data.test.cjs
+```
 
 ## Run it without VS Code
 

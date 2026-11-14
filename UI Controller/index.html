@@ -311,6 +311,7 @@ function safety(sms){
 function payload(c,m4){
  return{flightNumber:F.no,date:F.date,route:{from:'HKG',to:F.to,toName:ROUTES[F.to][0]},scheduledDeparture:hm(F.std),
   newDeparture:c.ontime?hm(F.std):c.newDeparture,newDepartureDate:c.cx||(!c.showTime&&!c.ontime)?null:(c.ontime?F.date:c.newDate),
+  ...FLIGHT_DEMO.arrivalTimes(F.to,F.date,F.std,c.ontime?0:c.showTime?c.mins:null),
   delayMinutes:c.cx||c.tbc?null:c.mins,status:c.status,statusColour:c.colour,confidence:c.conf,category:sel.cat,reasonId:c.r.id,
   messageType:det.mtype,passengerMessage:m4,entitlements:c.ents,nextUpdateAt:c.nextAt,gate:det.gate,gateChanged:c.gateChanged,
   sentAt:`${addDays(F.date,Math.floor(demoNow()/1440))}T${hm(demoNow())}:${pad(demoSecs())}+08:00`}
@@ -427,6 +428,7 @@ $('pub').onclick=()=>{
 $('reset').onclick=()=>{
  if(!F.valid)return;
  const obj={flightNumber:F.no,date:F.date,route:{from:'HKG',to:F.to,toName:ROUTES[F.to][0]},scheduledDeparture:hm(F.std),newDeparture:hm(F.std),newDepartureDate:F.date,
+  ...FLIGHT_DEMO.arrivalTimes(F.to,F.date,F.std),
   delayMinutes:0,status:'on_time',statusColour:'GREEN',confidence:null,category:null,reasonId:null,messageType:'reset',passengerMessage:null,entitlements:[],nextUpdateAt:null,
   gate:F.gate,gateChanged:false,sentAt:`${F.date}T${hm(demoNow())}:00+08:00`};
  send(obj);
